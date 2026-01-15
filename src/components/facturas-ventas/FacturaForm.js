@@ -11,7 +11,7 @@ import AddIcon from '@mui/icons-material/Add';
 import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
 import { DatePicker } from "@mui/x-date-pickers/DatePicker";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
-
+import { Backdrop, CircularProgress  } from "@mui/material";
 import PagoModal from "./modales/PagoModal";
 
 export default function FacturaForm() {
@@ -20,6 +20,7 @@ export default function FacturaForm() {
   const [productos, setProductos] = useState([]);
   const [puntosVenta, setPuntosVenta] = useState([]);
 
+  
   const [cliente_id, setClienteId] = useState("");
   const [puntoVenta, setPuntoVenta] = useState("");
   const [letra, setLetra] = useState("");
@@ -39,6 +40,7 @@ export default function FacturaForm() {
   const [nuevoAjustePorcentaje, setNuevoAjustePorcentaje] = useState("");
 
   const [tab, setTab] = useState(0);
+const [loading, setLoading] = useState(false);
 
   const [pagos, setPagos] = useState([]);
   const [openPago, setOpenPago] = useState(false);
@@ -214,6 +216,7 @@ export default function FacturaForm() {
 
   // ── GUARDAR FACTURA ──
   const guardarFactura = async (pagoData) => {
+    setLoading(true)
 
     const pagos = pagoData?.pagos || [];
     const totalPagado = pagoData?.totalPagado || 0;
@@ -279,11 +282,13 @@ export default function FacturaForm() {
     } catch (err) {
       console.error("guardarFactura error:", err);
       alert("Error al crear factura: " + (err.message || err));
+    } finally {
+      setLoading(false);
     }
   };
   const eliminarPago = (index) => {
-  setPagos((prev) => prev.filter((_, i) => i !== index));
-};
+    setPagos((prev) => prev.filter((_, i) => i !== index));
+  };
 
 
   // ── RENDER ──
@@ -630,6 +635,12 @@ export default function FacturaForm() {
           Guardar
         </Button>
       </Box>
+      <Backdrop
+        open={loading}
+        sx={{ color: "#fff", zIndex: (theme) => theme.zIndex.drawer + 1 }}
+      >
+        <CircularProgress color="inherit" />
+      </Backdrop>
     </Paper>
   );
 }

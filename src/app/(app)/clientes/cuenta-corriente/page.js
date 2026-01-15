@@ -7,20 +7,19 @@ import {
   Button,
   Paper,
   MenuItem,
-  Autocomplete
+  Autocomplete,
+  CircularProgress,
+  Backdrop,
 } from "@mui/material";
 
 import CrudTableFacturas from "@/components/facturas-ventas/CrudTableFacturas";
 import ModalFactura from "@/components/facturas-ventas/modales/ModalFactura";
 import PagoModal from "@/components/facturas-ventas/modales/PagoModal";
-import { CircularProgress, Backdrop } from "@mui/material";
 
-
-
-export default function FacturasPage({ title }) {
+export default function cuentaCorriente({ title }) {
   const [filters, setFilters] = useState({
     cliente_id: "",
-    estado: "TODAS", // TODAS | PENDIENTES
+    estado: "TODAS",
     fechaDesde: "",
     fechaHasta: ""
   });
@@ -36,17 +35,26 @@ export default function FacturasPage({ title }) {
   const [cliente, setCliente] = useState(null);
   const [pagoModalOpen, setPagoModalOpen] = useState(false);
 
-const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(false);
 
-  
   /* =============================
      CARGAR CLIENTES
   ============================= */
   useEffect(() => {
-    fetch("/api/clientes")
-      .then(res => res.json())
-      .then(setClientes)
-      .catch(console.error);
+    const loadClientes = async () => {
+      setLoading(true);
+      try {
+        const res = await fetch("/api/clientes");
+        const json = await res.json();
+        setClientes(json);
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadClientes();
   }, []);
 
   const abrirPago = (factura) => {
@@ -57,41 +65,49 @@ const [loading, setLoading] = useState(false);
   /* =============================
      BUSCAR FACTURAS
   ============================= */
-const buscar = async () => {
-  setLoading(true);
+  const buscar = async () => {
+    setLoading(true);
+    try {
+      const res = await fetch("/api/facturas-ventas/list", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(filters),
+      });
 
-  try {
-    const res = await fetch("/api/facturas-ventas/list", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(filters)
-    });
+      const json = await res.json();
+      setData(json);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    const json = await res.json();
-    setData(json);
-  } catch (err) {
-    console.error(err);
-  } finally {
-    setLoading(false);
-  }
-};
-
-
+  /* =============================
+     VER DETALLE FACTURA
+  ============================= */
   const onVerDetalle = async (factura) => {
+    setLoading(true);
     setFacturaSeleccionada(factura);
 
-    const resp = await fetch(`/api/facturas-ventas/${factura.id}`);
-    const json = await resp.json();
+    try {
+      const resp = await fetch(`/api/facturas-ventas/${factura.id}`);
+      const json = await resp.json();
 
-    setDetalle(json.detalle || []);
-    setPagos(json.pagos || []);
-    setCliente({
-      cliente_id: json.cliente_id,
-      cliente_nombre: json.cliente_nombre,
-      cliente_dni: json.cliente_dni
-    });
+      setDetalle(json.detalle || []);
+      setPagos(json.pagos || []);
+      setCliente({
+        cliente_id: json.cliente_id,
+        cliente_nombre: json.cliente_nombre,
+        cliente_dni: json.cliente_dni,
+      });
 
-    setOpenDetalle(true);
+      setOpenDetalle(true);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -100,13 +116,7 @@ const buscar = async () => {
 
       ⚙️ Opciones de búsqueda
       <Paper sx={{ p: 2, mb: 2 }}>
-        <Box
-          sx={{
-            display: "flex",
-            flexWrap: "wrap",
-            gap: 2,
-          }}
-        >
+        <Box sx={{ display: "flex", flexWrap: "wrap", gap: 2 }}>
           {/* CLIENTE */}
           <Autocomplete
             sx={{ flex: "1 1 250px" }}
@@ -117,7 +127,7 @@ const buscar = async () => {
             onChange={(_, value) =>
               setFilters({
                 ...filters,
-                cliente_id: value?.id || ""
+                cliente_id: value?.id || "",
               })
             }
             renderInput={(params) => (
@@ -178,7 +188,7 @@ const buscar = async () => {
         onAgregarPago={abrirPago}
       />
 
-      {/* MODAL DETALLE */}
+      {/* MODALES */}
       <ModalFactura
         open={openDetalle}
         onClose={() => setOpenDetalle(false)}
@@ -187,23 +197,21 @@ const buscar = async () => {
         detalle={detalle}
         pagos={pagos}
       />
-
-      {/* MODAL PAGO */}
+      
       <PagoModal
         open={pagoModalOpen}
         onClose={() => setPagoModalOpen(false)}
         factura={facturaSeleccionada}
-        onGuardado={() => buscar()}
+        onGuardado={buscar}
       />
 
-      
+      {/* SPINNER GLOBAL */}
       <Backdrop
-  open={loading}
-  sx={{ color: "#fff", zIndex: (theme) => theme.zIndex.drawer + 1 }}
->
-  <CircularProgress color="inherit" />
-</Backdrop>
-
+        open={loading}
+        sx={{ color: "#fff", zIndex: (theme) => theme.zIndex.drawer + 1 }}
+      >
+        <CircularProgress color="inherit" />
+      </Backdrop>
     </Box>
   );
 }

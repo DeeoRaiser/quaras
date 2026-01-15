@@ -57,46 +57,81 @@ export default function ArticuloPage() {
     }
   };
 
-  const loadAllData = async () => {
-    try {
-      setLoading(true);
+const loadAllData = async () => {
+  setLoading(true);
+  try {
+    const [pRes, iRes, fRes, cRes, clRes, cCost] = await Promise.allSettled([
+      fetch("/api/articulos"),
+      fetch("/api/iva"),
+      fetch("/api/familias"),
+      fetch("/api/categorias"),
+      fetch("/api/clasificaciones"),
+      fetch("/api/centros-costos"),
+    ]);
 
-      const [pRes, iRes, fRes, cRes, clRes, cCost] = await Promise.allSettled([
-        fetch("/api/articulos"),
-        fetch("/api/iva"),
-        fetch("/api/familias"),
-        fetch("/api/categorias"),
-        fetch("/api/clasificaciones"),
-        fetch("/api/centros-costos"),
-      ]);
+    const safe = async (p) =>
+      p.status === "fulfilled" ? safeJson(p.value) : [];
 
-      const safe = async (p) =>
-        p.status === "fulfilled" ? safeJson(p.value) : [];
+    const [p, i, f, c, cl, cc] = await Promise.all([
+      safe(pRes),
+      safe(iRes),
+      safe(fRes),
+      safe(cRes),
+      safe(clRes),
+      safe(cCost),
+    ]);
 
-      const [p, i, f, c, cl, cc] = await Promise.all([
-        safe(pRes),
-        safe(iRes),
-        safe(fRes),
-        safe(cRes),
-        safe(clRes),
-        safe(cCost),
-      ]);
+    setProductos(p);
+    setIvas(i);
+    setFamilias(f);
+    setCategorias(c);
+    setClasificaciones(cl);
+    setCentroCostos(cc);
+  } catch (err) {
+    console.error("Error al cargar:", err);
+  } finally {
+    setLoading(false);
+  }
+};
 
-      setProductos(p);
-      setIvas(i);
-      setFamilias(f);
-      setCategorias(c);
-      setClasificaciones(cl);
-      setCentroCostos(cc);
 
-    } catch (err) {
-      console.error("Error al cargar:", err);
-    } finally {
-      setLoading(false);
-    }
-  };
+  useEffect(() => {const loadAllData = async () => {
+  setLoading(true);
+  try {
+    const [pRes, iRes, fRes, cRes, clRes, cCost] = await Promise.allSettled([
+      fetch("/api/articulos"),
+      fetch("/api/iva"),
+      fetch("/api/familias"),
+      fetch("/api/categorias"),
+      fetch("/api/clasificaciones"),
+      fetch("/api/centros-costos"),
+    ]);
 
-  useEffect(() => {
+    const safe = async (p) =>
+      p.status === "fulfilled" ? safeJson(p.value) : [];
+
+    const [p, i, f, c, cl, cc] = await Promise.all([
+      safe(pRes),
+      safe(iRes),
+      safe(fRes),
+      safe(cRes),
+      safe(clRes),
+      safe(cCost),
+    ]);
+
+    setProductos(p);
+    setIvas(i);
+    setFamilias(f);
+    setCategorias(c);
+    setClasificaciones(cl);
+    setCentroCostos(cc);
+  } catch (err) {
+    console.error("Error al cargar:", err);
+  } finally {
+    setLoading(false);
+  }
+};
+
     loadAllData();
   }, []);
 
@@ -158,43 +193,57 @@ export default function ArticuloPage() {
     setOpenForm(true);
   };
 
-  const handleSubmit = async () => {
-    try {
-      const method = isEdit ? "PUT" : "POST";
-      const url = isEdit ? `/api/articulos/${editingId}` : "/api/articulos";
+const handleSubmit = async () => {
+  setLoading(true);
+  try {
+    const method = isEdit ? "PUT" : "POST";
+    const url = isEdit
+      ? `/api/articulos/${editingId}`
+      : "/api/articulos";
 
-      const payload = {
-        ...form,
-        descuentos: typeof form.descuentos === "string"
-          ? form.descuentos.split(",").map((s) => s.trim()).filter(Boolean)
-          : Array.isArray(form.descuentos)
-            ? form.descuentos
-            : [],
-      };
+    const payload = {
+      ...form,
+      descuentos: typeof form.descuentos === "string"
+        ? form.descuentos.split(",").map(s => s.trim()).filter(Boolean)
+        : Array.isArray(form.descuentos)
+          ? form.descuentos
+          : [],
+    };
 
-      await fetch(url, {
-        method,
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-    } catch (e) {
-      console.error("Error submit:", e);
-    } finally {
-      setOpenForm(false);
-      loadAllData();
-    }
-  };
+    await fetch(url, {
+      method,
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
 
-  const handleDelete = async () => {
-    try {
-      await fetch(`/api/articulos/${deleteId}`, { method: "DELETE" });
-    } catch (e) {
-      console.error("Error delete:", e);
-    } finally {
-      setOpenDelete(false);
-      loadAllData();
-    }
-  };
+    setOpenForm(false);
+    await loadAllData(); // refresca con spinner
+  } catch (e) {
+    console.error("Error submit:", e);
+  } finally {
+    setLoading(false);
+  }
+};
+
+
+const handleDelete = async () => {
+  setLoading(true);
+  try {
+    await fetch(`/api/articulos/${deleteId}`, {
+      method: "DELETE",
+    });
+
+    setOpenDelete(false);
+    await loadAllData();
+  } catch (e) {
+    console.error("Error delete:", e);
+  } finally {
+    setLoading(false);
+  }
+};
+
+
+
 
   // ---------- RENDER ----------
   return (

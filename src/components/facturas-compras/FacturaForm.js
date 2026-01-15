@@ -11,16 +11,19 @@ import AddIcon from '@mui/icons-material/Add';
 import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
 import { DatePicker } from "@mui/x-date-pickers/DatePicker";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
+import { CircularProgress, Backdrop } from "@mui/material";
 
 import PagoModal from "./modales/PagoModal";
 
 export default function FacturaForm() {
   // ── ESTADOS ─
   const [proveedores, setProveedores] = useState([]);
+   const [centroCosto, setCentroCosto] = useState([]);
   const [productos, setProductos] = useState([]);
-
+  const [loading, setLoading] = useState(false);
 
   const [proveedor_id, setProveedorId] = useState("");
+  const [centroCosto_id, setCentroCosto_id] = useState("");
   const [puntoVenta, setPuntoVenta] = useState("");
   const [letra, setLetra] = useState("");
   const [numeroFactura, setNumeroFactura] = useState("");
@@ -59,6 +62,7 @@ export default function FacturaForm() {
   // ───── FETCHS INICIALES ─────
   useEffect(() => {
     fetch("/api/proveedores").then(r => r.json()).then(setProveedores).catch(() => setProveedores([]));
+    fetch("/api/proveedores").then(r => r.json()).then(setCentroCosto).catch(() => setCentroCosto([]));
     fetch("/api/impuestos/factura-compras").then(r => r.json()).then(setImpuestosDisponibles).catch(() => setImpuestosDisponibles([]));
   }, []);
 
@@ -69,10 +73,19 @@ export default function FacturaForm() {
       return;
     }
 
-    fetch(`/api/articulos_compras/${proveedor_id}`)
-      .then(r => r.json())
-      .then(setProductos)
-      .catch(() => setProductos([]));
+    const fetchProductos = async () => {
+      setLoading(true);
+      try {
+        const res = await fetch(`/api/articulos_compras/${proveedor_id}`);
+        setProductos(await res.json());
+      } catch {
+        setProductos([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchProductos();
   }, [proveedor_id]);
 
 
@@ -207,6 +220,7 @@ export default function FacturaForm() {
 
   // ── GUARDAR FACTURA ──
   const guardarFactura = async (pagoData) => {
+    setLoading(true)
 
     const pagos = pagoData?.pagos || [];
     const totalPagado = pagoData?.totalPagado || 0;
@@ -268,11 +282,16 @@ export default function FacturaForm() {
       const factura = await facturaRes.json();
 
       alert("Factura creada con éxito");
-      setOpenPago(false);
+      setOpenPago(false)
+
     } catch (err) {
       console.error("guardarFactura error:", err);
       alert("Error al cargar factura: " + (err.message || err));
+    } finally {
+      setLoading(false);
     }
+
+
   };
   const eliminarPago = (index) => {
     setPagos((prev) => prev.filter((_, i) => i !== index));
@@ -290,6 +309,18 @@ export default function FacturaForm() {
         options={proveedores}
         getOptionLabel={(option) => option.nombre || ""}
         value={proveedores.find(c => c.id === proveedor_id) || null}
+        onChange={(event, newValue) => setProveedorId(newValue ? newValue.id : "")}
+        renderInput={(params) => (
+          <TextField {...params} label="Proveedor" fullWidth />
+        )}
+        sx={{ mb: 3 }}
+      />
+
+      {/* Centro de Costo */}
+      <Autocomplete
+        options={centroCosto}
+        getOptionLabel={(option) => option.centroCosto || ""}
+        value={proveedores.find(c => c.id === centroCosto_id) || null}
         onChange={(event, newValue) => setProveedorId(newValue ? newValue.id : "")}
         renderInput={(params) => (
           <TextField {...params} label="Proveedor" fullWidth />
@@ -618,6 +649,12 @@ export default function FacturaForm() {
           Guardar
         </Button>
       </Box>
+      <Backdrop
+        open={loading}
+        sx={{ color: "#fff", zIndex: (theme) => theme.zIndex.drawer + 1 }}
+      >
+        <CircularProgress color="inherit" />
+      </Backdrop>
     </Paper>
   );
 }

@@ -1,7 +1,15 @@
 "use client";
 
 import { useState } from "react";
-import { Box, TextField, Button, Paper, MenuItem } from "@mui/material";
+import {
+  Box,
+  TextField,
+  Button,
+  Paper,
+  MenuItem,
+  Backdrop,
+  CircularProgress,
+} from "@mui/material";
 
 import CrudTableFacturas from "@/components/facturas-compras/CrudTableFacturas";
 import ModalFactura from "./modales/ModalFactura";
@@ -11,7 +19,7 @@ const letras = ["A", "B"];
 
 export default function FacturasPage({ title }) {
   const [filters, setFilters] = useState({
-    puntoCompra: "",
+    puntoVenta: "",
     numero: "",
     letra: "",
     fechaDesde: "",
@@ -19,9 +27,9 @@ export default function FacturasPage({ title }) {
   });
 
   const [data, setData] = useState([]);
+  const [loading, setLoading] = useState(false);
 
- 
-  // Modal
+  // Modales
   const [openDetalle, setOpenDetalle] = useState(false);
   const [facturaSeleccionada, setFacturaSeleccionada] = useState(null);
   const [detalle, setDetalle] = useState([]);
@@ -34,17 +42,30 @@ export default function FacturasPage({ title }) {
     setPagoModalOpen(true);
   };
 
+  /* =============================
+     BUSCAR FACTURAS (CON SPINNER)
+  ============================= */
   const buscar = async () => {
-    const res = await fetch("/api/facturas-compras/list", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(filters)
-    });
-    setData(await res.json());
+    setLoading(true);
+    try {
+      const res = await fetch("/api/facturas-compras/list", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(filters),
+      });
+
+      const json = await res.json();
+      setData(json);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const onVerDetalle = async (factura) => {
     setFacturaSeleccionada(factura);
+
     const resp = await fetch(`/api/facturas-compras/${factura.id}`);
     const json = await resp.json();
 
@@ -72,7 +93,6 @@ export default function FacturasPage({ title }) {
             gap: 2,
           }}
         >
-
           <TextField
             sx={{ flex: "1 1 100px" }}
             label="Punto Venta"
@@ -94,7 +114,7 @@ export default function FacturasPage({ title }) {
           />
 
           <TextField
-            sx={{ flex: "1 1 30px" }}
+            sx={{ flex: "1 1 60px" }}
             select
             label="Letra"
             value={filters.letra}
@@ -110,7 +130,7 @@ export default function FacturasPage({ title }) {
           </TextField>
 
           <TextField
-            sx={{ flex: "1 1 100px" }}
+            sx={{ flex: "1 1 140px" }}
             label="Fecha Desde"
             type="date"
             InputLabelProps={{ shrink: true }}
@@ -121,7 +141,7 @@ export default function FacturasPage({ title }) {
           />
 
           <TextField
-            sx={{ flex: "1 1 100px" }}
+            sx={{ flex: "1 1 140px" }}
             label="Fecha Hasta"
             type="date"
             InputLabelProps={{ shrink: true }}
@@ -131,12 +151,11 @@ export default function FacturasPage({ title }) {
             }
           />
 
-          <Box sx={{ flex: "1 1 100px" }}>
+          <Box sx={{ flex: "1 1 120px" }}>
             <Button variant="contained" onClick={buscar}>
               Buscar
             </Button>
           </Box>
-
         </Box>
       </Paper>
 
@@ -147,7 +166,7 @@ export default function FacturasPage({ title }) {
         onAgregarPago={abrirPago}
       />
 
-      {/* MODAL */}
+      {/* MODAL DETALLE */}
       <ModalFactura
         open={openDetalle}
         onClose={() => setOpenDetalle(false)}
@@ -157,6 +176,7 @@ export default function FacturasPage({ title }) {
         pagos={pagos}
       />
 
+      {/* MODAL PAGO */}
       <PagoModal
         open={pagoModalOpen}
         onClose={() => setPagoModalOpen(false)}
@@ -164,11 +184,13 @@ export default function FacturasPage({ title }) {
         onGuardado={() => buscar()}
       />
 
-
-
-
+      {/* 🔄 SPINNER GLOBAL */}
+      <Backdrop
+        open={loading}
+        sx={{ color: "#fff", zIndex: (theme) => theme.zIndex.drawer + 1 }}
+      >
+        <CircularProgress color="inherit" />
+      </Backdrop>
     </Box>
-
-
   );
 }

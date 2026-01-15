@@ -1,7 +1,15 @@
 "use client";
 
 import { useState } from "react";
-import { Box, TextField, Button, Paper, MenuItem } from "@mui/material";
+import {
+  Box,
+  TextField,
+  Button,
+  Paper,
+  MenuItem,
+  Backdrop,
+  CircularProgress
+} from "@mui/material";
 
 import CrudTableFacturas from "@/components/facturas-ventas/CrudTableFacturas";
 import ModalFactura from "./modales/ModalFactura";
@@ -19,8 +27,8 @@ export default function FacturasPage({ title }) {
   });
 
   const [data, setData] = useState([]);
+  const [loading, setLoading] = useState(false);
 
- 
   // Modal
   const [openDetalle, setOpenDetalle] = useState(false);
   const [facturaSeleccionada, setFacturaSeleccionada] = useState(null);
@@ -34,17 +42,30 @@ export default function FacturasPage({ title }) {
     setPagoModalOpen(true);
   };
 
+  /* =============================
+     BUSCAR FACTURAS
+  ============================= */
   const buscar = async () => {
-    const res = await fetch("/api/facturas-ventas/list", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(filters)
-    });
-    setData(await res.json());
+    setLoading(true);
+    try {
+      const res = await fetch("/api/facturas-ventas/list", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(filters)
+      });
+
+      const json = await res.json();
+      setData(json);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const onVerDetalle = async (factura) => {
     setFacturaSeleccionada(factura);
+
     const resp = await fetch(`/api/facturas-ventas/${factura.id}`);
     const json = await resp.json();
 
@@ -54,7 +75,7 @@ export default function FacturasPage({ title }) {
       cliente_dni: json.cliente_dni,
       cliente_id: json.cliente_id,
       cliente_nombre: json.cliente_nombre
-    } || null);
+    });
 
     setOpenDetalle(true);
   };
@@ -65,14 +86,7 @@ export default function FacturasPage({ title }) {
 
       ⚙️ Opciones de búsqueda
       <Paper sx={{ p: 2, mb: 2 }}>
-        <Box
-          sx={{
-            display: "flex",
-            flexWrap: "wrap",
-            gap: 2,
-          }}
-        >
-
+        <Box sx={{ display: "flex", flexWrap: "wrap", gap: 2 }}>
           <TextField
             sx={{ flex: "1 1 100px" }}
             label="Punto Venta"
@@ -136,7 +150,6 @@ export default function FacturasPage({ title }) {
               Buscar
             </Button>
           </Box>
-
         </Box>
       </Paper>
 
@@ -147,7 +160,7 @@ export default function FacturasPage({ title }) {
         onAgregarPago={abrirPago}
       />
 
-      {/* MODAL */}
+      {/* MODAL DETALLE */}
       <ModalFactura
         open={openDetalle}
         onClose={() => setOpenDetalle(false)}
@@ -157,18 +170,21 @@ export default function FacturasPage({ title }) {
         pagos={pagos}
       />
 
+      {/* MODAL PAGO */}
       <PagoModal
         open={pagoModalOpen}
         onClose={() => setPagoModalOpen(false)}
         factura={facturaSeleccionada}
-        onGuardado={() => buscar()}
+        onGuardado={buscar}
       />
 
-
-
-
+      {/* SPINNER */}
+      <Backdrop
+        open={loading}
+        sx={{ color: "#fff", zIndex: (theme) => theme.zIndex.drawer + 1 }}
+      >
+        <CircularProgress color="inherit" />
+      </Backdrop>
     </Box>
-
-
   );
 }

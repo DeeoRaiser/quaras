@@ -5,6 +5,7 @@ import AccountBalanceIcon from "@mui/icons-material/AccountBalance";
 import AddIcon from "@mui/icons-material/Add";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
+import Loader from "@/components/common/Loader";
 
 import { Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, IconButton, Button, Typography, Box, Tooltip } from "@mui/material";
 
@@ -16,17 +17,24 @@ export default function ListadoBancos() {
     const [mensaje, setMensaje] = useState("");
     const [bancoSeleccionado, setBancoSeleccionado] = useState(null);
     const [modalOpen, setModalOpen] = useState(false);
+const [loading, setLoading] = useState(true);
+
+
 
     // Traer bancos
-    const fetchBancos = async () => {
-        try {
-            const res = await fetch("/api/bancos");
-            const data = await res.json();
-            setBancos(data);
-        } catch (err) {
-            console.error(err);
-        }
-    };
+const fetchBancos = async () => {
+  try {
+    setLoading(true);
+    const res = await fetch("/api/bancos");
+    const data = await res.json();
+    setBancos(data);
+  } catch (err) {
+    console.error(err);
+  } finally {
+    setLoading(false);
+  }
+};
+
 
     useEffect(() => {
         fetchBancos();
@@ -143,6 +151,9 @@ export default function ListadoBancos() {
                     {mensaje}
                 </Typography>
             )}
+            <Loader open={loading} />
+
         </Box>
+        
     );
 }
