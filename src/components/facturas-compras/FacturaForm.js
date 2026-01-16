@@ -18,12 +18,12 @@ import PagoModal from "./modales/PagoModal";
 export default function FacturaForm() {
   // ── ESTADOS ─
   const [proveedores, setProveedores] = useState([]);
-   const [centroCosto, setCentroCosto] = useState([]);
+  const [centroCosto, setCentroCosto] = useState([]);
   const [productos, setProductos] = useState([]);
   const [loading, setLoading] = useState(false);
 
   const [proveedor_id, setProveedorId] = useState("");
-  const [centroCosto_id, setCentroCosto_id] = useState("");
+  const [centroCosto_id, setCentroCostoId] = useState("");
   const [puntoVenta, setPuntoVenta] = useState("");
   const [letra, setLetra] = useState("");
   const [numeroFactura, setNumeroFactura] = useState("");
@@ -61,10 +61,27 @@ export default function FacturaForm() {
 
   // ───── FETCHS INICIALES ─────
   useEffect(() => {
-    fetch("/api/proveedores").then(r => r.json()).then(setProveedores).catch(() => setProveedores([]));
-    fetch("/api/proveedores").then(r => r.json()).then(setCentroCosto).catch(() => setCentroCosto([]));
-    fetch("/api/impuestos/factura-compras").then(r => r.json()).then(setImpuestosDisponibles).catch(() => setImpuestosDisponibles([]));
+    let isMounted = true;
+
+    const fetchData = async (url, setter) => {
+      try {
+        const res = await fetch(url);
+        if (!res.ok) throw new Error("Error HTTP");
+        const data = await res.json();
+        if (isMounted) setter(data);
+      } catch {
+        if (isMounted) setter([]);
+      }
+    };
+
+    fetchData("/api/proveedores", setProveedores);
+    fetchData("/api/centros-costos", setCentroCosto);
+    fetchData("/api/impuestos/factura-compras", setImpuestosDisponibles);
+    return () => {
+      isMounted = false;
+    };
   }, []);
+
 
 
   useEffect(() => {
@@ -84,6 +101,9 @@ export default function FacturaForm() {
         setLoading(false);
       }
     };
+
+        console.log("PROVEEDORES")
+    console.log(proveedores)
 
     fetchProductos();
   }, [proveedor_id]);
@@ -304,29 +324,18 @@ export default function FacturaForm() {
     <Paper sx={{ p: 3, mt: 2 }}>
       <Typography variant="h5" mb={3}>Cargar Factura COMPRAS</Typography>
 
-      {/* PROVEEDOR */}
-      <Autocomplete
-        options={proveedores}
-        getOptionLabel={(option) => option.nombre || ""}
-        value={proveedores.find(c => c.id === proveedor_id) || null}
-        onChange={(event, newValue) => setProveedorId(newValue ? newValue.id : "")}
-        renderInput={(params) => (
-          <TextField {...params} label="Proveedor" fullWidth />
-        )}
-        sx={{ mb: 3 }}
-      />
+        {/* PROVEEDOR */}
+        <Autocomplete
+          sx={{ flex: 2, mb: 3}}
+          options={proveedores}
+          getOptionLabel={(option) => option.nombre || ""}
+          value={proveedores.find(c => c.id === proveedor_id) || null}
+          onChange={(event, newValue) => setProveedorId(newValue ? newValue.id : "")}
+          renderInput={(params) => (
+            <TextField {...params} label="Proveedor" fullWidth />
+          )}
 
-      {/* Centro de Costo */}
-      <Autocomplete
-        options={centroCosto}
-        getOptionLabel={(option) => option.centroCosto || ""}
-        value={proveedores.find(c => c.id === centroCosto_id) || null}
-        onChange={(event, newValue) => setProveedorId(newValue ? newValue.id : "")}
-        renderInput={(params) => (
-          <TextField {...params} label="Proveedor" fullWidth />
-        )}
-        sx={{ mb: 3 }}
-      />
+        />
 
       {/* PV - LETRA - NUMERO - FECHA */}
       <Box sx={{ display: "flex", gap: 2, mb: 3 }}>
