@@ -72,9 +72,9 @@ export default function FacturasPage({ title }) {
     setDetalle(json.detalle || []);
     setPagos(json.pagos || []);
     setCliente({
-      cliente_dni: json.cliente_dni,
-      cliente_id: json.cliente_id,
-      cliente_nombre: json.cliente_nombre
+      proveedor_CUIT: json.proveedor_CUIT,
+      proveedor_id: json.proveedor,
+      proveedor: json.proveedor
     } || null);
 
     setOpenDetalle(true);

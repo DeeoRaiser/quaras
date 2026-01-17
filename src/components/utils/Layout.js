@@ -33,19 +33,22 @@ const panels = [
   },
   {
     title: "🏪 Proveedores",
-    route: "/proveedores",
+     children: [
+      { title: "🏪 Lista Proveedores", route: "/proveedores" },
+      { title: "📒 Cuenta Corriente", route: "/proveedores/cuenta-corriente" },
+    ],
   },
   {
     title: "🧑‍🤝‍🧑 Clientes",
      children: [
-      { title: "🧑‍🤝‍🧑 Clientes", route: "/clientes" },
+      { title: "🧑‍🤝‍🧑 Lista Clientes", route: "/clientes" },
       { title: "📒 Cuenta Corriente", route: "/clientes/cuenta-corriente" },
     ],
   },
   {
     title: "🏦 Bancos",
     children: [
-      { title: "🏦 Bancos", route: "/bancos" },
+      { title: "🏦 Lista Bancos", route: "/bancos" },
       { title: "📒 Libro Banco", route: "/bancos/libro-bancos" },
     ],
   },

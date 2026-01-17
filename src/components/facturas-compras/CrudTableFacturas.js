@@ -45,81 +45,91 @@ export default function CrudTableFacturas({
           </TableRow>
         </TableHead>
 
-        <TableBody>
-          {lista.map((f) => {
-            const saldoColor = f.saldoPendiente > 0 ? "red" : "green";
+<TableBody>
+  {lista.length === 0 ? (
+    <TableRow>
+      <TableCell colSpan={7} align="center">
+        No hay movimientos para mostrar
+      </TableCell>
+    </TableRow>
+  ) : (
+    lista.map((f) => {
+      const saldoColor = f.saldoPendiente > 0 ? "red" : "green";
 
-            const fechaFormateada = f.fecha
-              ? new Date(f.fecha).toLocaleDateString("es-AR")
-              : "";
+      const fechaFormateada = f.fecha
+        ? new Date(f.fecha).toLocaleDateString("es-AR")
+        : "";
 
-            return (
-              <TableRow key={f.id}>
-                <TableCell>
-                  {String(f.punto_vta).padStart(4, "0")}-{String(f.numero).padStart(8, "0")}-{f.letra}
-                </TableCell>
+      return (
+        <TableRow key={f.id}>
+          <TableCell>
+            {String(f.punto_vta).padStart(4, "0")}-
+            {String(f.numero).padStart(8, "0")}-{f.letra}
+          </TableCell>
 
-                <TableCell>{f.proveedor_nombre}</TableCell>
+          <TableCell>{f.proveedor_nombre}</TableCell>
 
-                <TableCell>
-                  <strong>${f.totalFactura}</strong>
-                </TableCell>
+          <TableCell>
+            <strong>${f.totalFactura}</strong>
+          </TableCell>
 
-                <TableCell
-                  style={{
-                    fontWeight: "bold",
-                    color:
-                      f.estado === "PAGADA"
-                        ? "green"
-                        : f.estado === "PARCIAL"
-                        ? "orange"
-                        : "red"
-                  }}
-                >
-                  {f.estado}
-                </TableCell>
+          <TableCell
+            sx={{
+              fontWeight: "bold",
+              color:
+                f.estado === "PAGADA"
+                  ? "green"
+                  : f.estado === "PARCIAL"
+                  ? "orange"
+                  : "red",
+            }}
+          >
+            {f.estado}
+          </TableCell>
 
-                <TableCell style={{ color: saldoColor, fontWeight: "bold" }}>
-                  ${f.saldoPendiente}
-                </TableCell>
+          <TableCell sx={{ color: saldoColor, fontWeight: "bold" }}>
+            ${f.saldoPendiente}
+          </TableCell>
 
-                <TableCell>{fechaFormateada}</TableCell>
+          <TableCell>{fechaFormateada}</TableCell>
 
-                <TableCell align="center">
-                  <Box sx={{ display: "flex", gap: 1, justifyContent: "center" }}>
-                    <Tooltip title="Ver detalle">
-                      <IconButton color="primary" onClick={() => verDetalle?.(f)}>
-                        <VisibilityIcon />
-                      </IconButton>
-                    </Tooltip>
+          <TableCell align="center">
+            <Box sx={{ display: "flex", gap: 1, justifyContent: "center" }}>
+              <Tooltip title="Ver detalle">
+                <IconButton color="primary" onClick={() => verDetalle?.(f)}>
+                  <VisibilityIcon />
+                </IconButton>
+              </Tooltip>
 
-                    {f.estado !== "PAGADA" && (
-                      <Tooltip title="Agregar pago">
-                        <IconButton color="success" onClick={() => onAgregarPago?.(f)}>
-                          <PaymentsIcon />
-                        </IconButton>
-                      </Tooltip>
-                    )}
+              {f.estado !== "PAGADA" && (
+                <Tooltip title="Agregar pago">
+                  <IconButton color="success" onClick={() => onAgregarPago?.(f)}>
+                    <PaymentsIcon />
+                  </IconButton>
+                </Tooltip>
+              )}
 
-                    <Tooltip title="Modificar datos">
-                      <IconButton color="warning" onClick={() => onEditarFactura?.(f)}>
-                        <EditIcon />
-                      </IconButton>
-                    </Tooltip>
+              <Tooltip title="Modificar datos">
+                <IconButton color="warning" onClick={() => onEditarFactura?.(f)}>
+                  <EditIcon />
+                </IconButton>
+              </Tooltip>
 
-                    {onEliminar && (
-                      <Tooltip title="Eliminar factura">
-                        <IconButton color="error" onClick={() => onEliminar(f.id)}>
-                          <DeleteIcon />
-                        </IconButton>
-                      </Tooltip>
-                    )}
-                  </Box>
-                </TableCell>
-              </TableRow>
-            );
-          })}
-        </TableBody>
+              {onEliminar && (
+                <Tooltip title="Eliminar factura">
+                  <IconButton color="error" onClick={() => onEliminar(f.id)}>
+                    <DeleteIcon />
+                  </IconButton>
+                </Tooltip>
+              )}
+            </Box>
+          </TableCell>
+        </TableRow>
+      );
+    })
+  )}
+</TableBody>
+
       </Table>
     </Paper>
   );

@@ -16,12 +16,12 @@ import CrudTableFacturas from "@/components/facturas-compras/CrudTableFacturas";
 import ModalFactura from "@/components/facturas-compras/modales/ModalFactura";
 import PagoModal from "@/components/facturas-compras/modales/PagoModal";
 
-export default function CuentaCorrienteProveedores({ title }) {
+export default function cuentaCorriente({ title }) {
   const [filters, setFilters] = useState({
     proveedor_id: "",
     estado: "TODAS",
     fechaDesde: "",
-    fechaHasta: "",
+    fechaHasta: ""
   });
 
   const [proveedores, setProveedores] = useState([]);
@@ -32,13 +32,13 @@ export default function CuentaCorrienteProveedores({ title }) {
   const [facturaSeleccionada, setFacturaSeleccionada] = useState(null);
   const [detalle, setDetalle] = useState([]);
   const [pagos, setPagos] = useState([]);
-  const [proveedor, setProveedor] = useState(null);
+  const [cliente, setCliente] = useState(null);
   const [pagoModalOpen, setPagoModalOpen] = useState(false);
 
   const [loading, setLoading] = useState(false);
 
   /* =============================
-     CARGAR PROVEEDORES
+     CARGAR CLIENTES
   ============================= */
   useEffect(() => {
     const loadProveedores = async () => {
@@ -68,7 +68,7 @@ export default function CuentaCorrienteProveedores({ title }) {
   const buscar = async () => {
     setLoading(true);
     try {
-      const res = await fetch("/api/facturas-ventas/list", {
+      const res = await fetch("/api/facturas-compras/list", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(filters),
@@ -96,10 +96,10 @@ export default function CuentaCorrienteProveedores({ title }) {
 
       setDetalle(json.detalle || []);
       setPagos(json.pagos || []);
-      setProveedor({
-        proveedor_id: json.proveedor_id,
-        proveedor_nombre: json.proveedor_nombre,
-        proveedor_cuit: json.proveedor_cuit,
+      setCliente({
+         proveedor_CUIT: json.proveedor_CUIT,
+      proveedor_id: json.proveedor,
+      proveedor: json.proveedor
       });
 
       setOpenDetalle(true);
@@ -117,11 +117,13 @@ export default function CuentaCorrienteProveedores({ title }) {
       ⚙️ Opciones de búsqueda
       <Paper sx={{ p: 2, mb: 2 }}>
         <Box sx={{ display: "flex", flexWrap: "wrap", gap: 2 }}>
-          {/* PROVEEDOR */}
+          {/* CLIENTE */}
           <Autocomplete
             sx={{ flex: "1 1 250px" }}
             options={proveedores}
-            getOptionLabel={(p) => p.nombre || ""}
+            getOptionLabel={(c) =>
+              `${c.nombre}`.trim()
+            }
             onChange={(_, value) =>
               setFilters({
                 ...filters,
@@ -191,11 +193,11 @@ export default function CuentaCorrienteProveedores({ title }) {
         open={openDetalle}
         onClose={() => setOpenDetalle(false)}
         factura={facturaSeleccionada}
-        cliente={proveedor}
+        cliente={cliente}
         detalle={detalle}
         pagos={pagos}
       />
-
+      
       <PagoModal
         open={pagoModalOpen}
         onClose={() => setPagoModalOpen(false)}

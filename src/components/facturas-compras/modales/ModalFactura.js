@@ -11,11 +11,14 @@ export default function ModalFactura({
 }) {
     if (!factura) return null;
 
+    console.log("factura")
+    console.log(factura)
+
     // Para no romper si faltan
     const detalle = factura.detalle || [];
     const pagos = factura.pagos || [];
-    const clienteNombre = factura.cliente_nombre || factura.cliente?.cliente_nombre || '';
-    const clienteDni = factura.cliente_dni || factura.cliente?.cliente_dni || '';
+    const proveedorNombre = factura.proveedor_nombre || '';
+    const proveedorCUIT = factura.proveedor_cuit || '';
 
     const nroCompleto = `${String(factura.punto_vta).padStart(4, "0")}-${String(factura.numero).padStart(8, "0")}-${factura.letra}`;
 
@@ -33,9 +36,9 @@ export default function ModalFactura({
             <DialogTitle>Factura {nroCompleto}</DialogTitle>
             <DialogContent dividers>
                 {/* CLIENTE */}
-                <Typography variant="h6">Datos del Cliente</Typography>
-                <Typography>Nombre: {clienteNombre}</Typography>
-                <Typography>DNI / CUIT: {clienteDni}</Typography>
+                <Typography variant="h6">Datos del Proveedor</Typography>
+                <Typography>Nombre: {proveedorNombre}</Typography>
+                <Typography>CUIT: {proveedorCUIT}</Typography>
 
                 <Divider sx={{ my: 2 }} />
 
