@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Servidor: 127.0.0.1
--- Tiempo de generación: 08-01-2026 a las 23:03:27
+-- Tiempo de generación: 18-01-2026 a las 23:54:31
 -- Versión del servidor: 10.4.32-MariaDB
 -- Versión de PHP: 8.2.12
 
@@ -35,6 +35,14 @@ CREATE TABLE `aplicaciones_pagos` (
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Volcado de datos para la tabla `aplicaciones_pagos`
+--
+
+INSERT INTO `aplicaciones_pagos` (`id`, `pago_id`, `factura_id`, `monto_aplicado`, `created_at`, `updated_at`) VALUES
+(7, 25, 58, 8.00, '2026-01-18 14:50:33', '2026-01-18 14:50:33'),
+(8, 25, 57, 492.00, '2026-01-18 14:50:33', '2026-01-18 14:50:33');
 
 -- --------------------------------------------------------
 
@@ -384,7 +392,8 @@ CREATE TABLE `facturas` (
 
 INSERT INTO `facturas` (`id`, `cliente_id`, `fecha`, `numero`, `letra`, `punto_vta`, `total`, `estado`, `observacion`, `created_at`, `updated_at`, `saldo`) VALUES
 (56, 2, '2025-12-26', '11', 'B', 1, 500.00, 'PENDIENTE', NULL, '2025-12-26 18:58:14', '2025-12-26 18:58:14', 500.00),
-(57, 2, '2026-01-02', '12', 'B', 1, 500.00, 'PENDIENTE', NULL, '2026-01-02 16:32:41', '2026-01-02 16:34:43', 500.00);
+(57, 2, '2026-01-02', '12', 'B', 1, 500.00, 'PENDIENTE', NULL, '2026-01-02 16:32:41', '2026-01-02 16:34:43', 500.00),
+(58, 2, '2026-01-17', '101', 'B', 1, 8.00, 'PENDIENTE', NULL, '2026-01-17 19:33:34', '2026-01-17 19:33:34', 8.00);
 
 -- --------------------------------------------------------
 
@@ -514,7 +523,8 @@ CREATE TABLE `factura_detalle` (
 
 INSERT INTO `factura_detalle` (`id`, `factura_id`, `articulo_id`, `descripcion`, `cantidad`, `ajuste`, `precio_venta`, `iva`, `created_at`, `centro_costo_id`) VALUES
 (100, 56, 6, 'CUMPLEAÑOS', 1.00, 0.00, 500.00, 21.00, '2025-12-26 18:58:14', 1),
-(101, 57, 6, 'CUMPLEAÑOS', 1.00, 0.00, 500.00, 21.00, '2026-01-02 16:32:41', 1);
+(101, 57, 6, 'CUMPLEAÑOS', 1.00, 0.00, 500.00, 21.00, '2026-01-02 16:32:41', 1),
+(102, 58, 8, 'TREKING', 1.00, 0.00, 8.00, 21.00, '2026-01-17 19:33:34', 4);
 
 -- --------------------------------------------------------
 
@@ -624,7 +634,6 @@ INSERT INTO `movimientos_bancarios` (`id`, `banco_id`, `fecha`, `tipo`, `monto`,
 CREATE TABLE `pagos` (
   `id` int(11) NOT NULL,
   `cliente_id` int(11) NOT NULL,
-  `factura_id` int(11) NOT NULL,
   `fecha` date NOT NULL,
   `monto` decimal(12,4) NOT NULL,
   `metodo` enum('EFECTIVO','TARJETA','TRANSFERENCIA') NOT NULL,
@@ -642,9 +651,10 @@ CREATE TABLE `pagos` (
 -- Volcado de datos para la tabla `pagos`
 --
 
-INSERT INTO `pagos` (`id`, `cliente_id`, `factura_id`, `fecha`, `monto`, `metodo`, `banco`, `lote`, `cupon`, `tarjeta`, `observacion`, `comprobante`, `created_at`, `updated_at`) VALUES
-(22, 2, 52, '2025-12-09', 10000.0000, 'EFECTIVO', '', '', '', '', '', '', '2025-12-19 19:48:18', '2025-12-19 19:48:18'),
-(23, 2, 53, '2025-12-09', 10000.0000, 'EFECTIVO', '', '', '', '', '', '', '2025-12-19 19:52:25', '2025-12-19 19:52:25');
+INSERT INTO `pagos` (`id`, `cliente_id`, `fecha`, `monto`, `metodo`, `banco`, `lote`, `cupon`, `tarjeta`, `observacion`, `comprobante`, `created_at`, `updated_at`) VALUES
+(22, 2, '2025-12-09', 10000.0000, 'EFECTIVO', '', '', '', '', '', '', '2025-12-19 19:48:18', '2025-12-19 19:48:18'),
+(23, 2, '2025-12-09', 10000.0000, 'EFECTIVO', '', '', '', '', '', '', '2025-12-19 19:52:25', '2025-12-19 19:52:25'),
+(25, 2, '2026-01-18', 500.0000, 'EFECTIVO', NULL, NULL, NULL, NULL, '', NULL, '2026-01-18 14:50:33', '2026-01-18 14:50:33');
 
 -- --------------------------------------------------------
 
@@ -758,7 +768,7 @@ CREATE TABLE `puntos_venta` (
 --
 
 INSERT INTO `puntos_venta` (`id`, `usuario_id`, `nombre`, `punto_venta`, `numero`, `tipo_comprobante`, `letra`, `activo`) VALUES
-(1, 2, 'FACTURA A', 1, 50, 'FACTURA', 'A', 1),
+(1, 2, 'FACTURA A', 1, 51, 'FACTURA', 'A', 1),
 (2, 2, 'FACTURA B', 1, 10, 'FACTURA', 'B', 1),
 (3, 2, 'FACTURA PV 2', 2, 100, 'FACTURA', 'B', 1);
 
@@ -816,7 +826,7 @@ CREATE TABLE `usuarios` (
 --
 
 INSERT INTO `usuarios` (`id`, `nombre`, `apellido`, `usuario`, `password`, `access`, `punto_venta_id`) VALUES
-(2, 'admin', 'admin', 'admin', '$2b$10$ylvqB5R5qAatwYP3r.SNTeS6i5GW8Ya6rNSstF7iJVLq6kmjCKNEC', 'proveedores,listado-bancos, conceptos-bancarios,clientes,articulos,movimientos-bancarios', NULL);
+(2, 'admin', 'admin', 'admin', '$2b$10$ylvqB5R5qAatwYP3r.SNTeS6i5GW8Ya6rNSstF7iJVLq6kmjCKNEC', 'proveedores,listado-bancos, conceptos-bancarios,clientes,articulos,movimientos-bancarios,clientes-cuentas-corrientes, ordenes-de-pago-clientes', NULL);
 
 -- --------------------------------------------------------
 
@@ -1045,7 +1055,6 @@ ALTER TABLE `pagos`
 --
 ALTER TABLE `pagos_compras`
   ADD PRIMARY KEY (`id`),
-  ADD KEY `idx_pc_factura` (`factura_id`),
   ADD KEY `idx_pc_proveedor` (`proveedor_id`);
 
 --
@@ -1103,7 +1112,7 @@ ALTER TABLE `ventas`
 -- AUTO_INCREMENT de la tabla `aplicaciones_pagos`
 --
 ALTER TABLE `aplicaciones_pagos`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=9;
 
 --
 -- AUTO_INCREMENT de la tabla `aplicaciones_pagos_compras`
@@ -1187,7 +1196,7 @@ ALTER TABLE `cupones_tarjeta`
 -- AUTO_INCREMENT de la tabla `facturas`
 --
 ALTER TABLE `facturas`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=58;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=59;
 
 --
 -- AUTO_INCREMENT de la tabla `factura_ajustes_pie`
@@ -1223,7 +1232,7 @@ ALTER TABLE `factura_compra_impuestos`
 -- AUTO_INCREMENT de la tabla `factura_detalle`
 --
 ALTER TABLE `factura_detalle`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=102;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=103;
 
 --
 -- AUTO_INCREMENT de la tabla `iva`
@@ -1241,7 +1250,7 @@ ALTER TABLE `movimientos_bancarios`
 -- AUTO_INCREMENT de la tabla `pagos`
 --
 ALTER TABLE `pagos`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=24;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=26;
 
 --
 -- AUTO_INCREMENT de la tabla `pagos_compras`

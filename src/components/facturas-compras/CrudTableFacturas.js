@@ -109,11 +109,6 @@ export default function CrudTableFacturas({
                 </Tooltip>
               )}
 
-              <Tooltip title="Modificar datos">
-                <IconButton color="warning" onClick={() => onEditarFactura?.(f)}>
-                  <EditIcon />
-                </IconButton>
-              </Tooltip>
 
               {onEliminar && (
                 <Tooltip title="Eliminar factura">

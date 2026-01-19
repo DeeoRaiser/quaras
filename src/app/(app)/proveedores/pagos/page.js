@@ -3,7 +3,7 @@ import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { redirect } from "next/navigation";
 import { hasAccess } from "@/components/utils/HasAccess";
 
-import ClientesPage from "@/components/clientes/ClientesPage";
+import PagoMultipleModal from "@/components/facturas-compras/modales/PagoMultiple";
 
 
 export default async function Proveedores() {
@@ -11,10 +11,10 @@ export default async function Proveedores() {
 
   if (!session) redirect("/login")
 
-  if (!hasAccess(session.user, "ordenes-de-pago-clientes")) {
-    redirect(`/error-acceso?modulo=ordenes-de-pago-clientes`);
+  if (!hasAccess(session.user, "proveedores")) {
+    redirect(`/error-acceso?modulo=proveedores`);
   }
   return (
-    <ClientesPage />
+    <PagoMultipleModal />
   );
 }

@@ -17,11 +17,11 @@ export async function POST(req) {
       fechaDesde,
       fechaHasta,
       proveedor_id,
-      estado,
+      estado = "TODAS"
     } = body || {};
 
 
-     console.log("body")
+    console.log("body")
 
     console.log(body)
 
@@ -37,6 +37,11 @@ export async function POST(req) {
     if (numero) {
       where += " AND fc.numero = ?";
       params.push(numero);
+    }
+
+    if (estado !== "TODAS") {
+      where += " AND f.estado = ?";
+      params.push(estado);
     }
 
     if (letra) {
@@ -64,6 +69,9 @@ export async function POST(req) {
     /* ==========================================
        1️⃣ FACTURAS + PROVEEDOR + PAGOS
     ========================================== */
+
+    console.log(params)
+
     const [facturas] = await conn.query(
       `
       SELECT 

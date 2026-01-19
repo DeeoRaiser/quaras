@@ -1,43 +1,61 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Box,
   TextField,
   Button,
   Paper,
   MenuItem,
+  Autocomplete,
+  CircularProgress,
   Backdrop,
-  CircularProgress
 } from "@mui/material";
 
 import CrudTableFacturas from "@/components/facturas-ventas/CrudTableFacturas";
-import ModalFactura from "./modales/ModalFactura";
-import PagoModal from "./modales/PagoModal";
+import ModalFactura from "@/components/facturas-ventas/modales/ModalFactura";
+import PagoModal from "@/components/facturas-ventas/modales/PagoModal";
 
-const letras = ["A", "B"];
-
-export default function FacturasPage({ title }) {
+export default function CuentaCorrienteProveedores({ title }) {
   const [filters, setFilters] = useState({
-    puntoVenta: "",
-    numero: "",
-    letra: "",
+    proveedor_id: "",
+    estado: "TODAS",
     fechaDesde: "",
-    fechaHasta: ""
+    fechaHasta: "",
   });
 
+  const [proveedores, setProveedores] = useState([]);
   const [data, setData] = useState([]);
-  const [loading, setLoading] = useState(false);
 
-  // Modal
+  // Modales
   const [openDetalle, setOpenDetalle] = useState(false);
   const [facturaSeleccionada, setFacturaSeleccionada] = useState(null);
   const [detalle, setDetalle] = useState([]);
   const [pagos, setPagos] = useState([]);
-  const [cliente, setCliente] = useState(null);
+  const [proveedor, setProveedor] = useState(null);
   const [pagoModalOpen, setPagoModalOpen] = useState(false);
 
+  const [loading, setLoading] = useState(false);
 
+  /* =============================
+     CARGAR PROVEEDORES
+  ============================= */
+  useEffect(() => {
+    const loadProveedores = async () => {
+      setLoading(true);
+      try {
+        const res = await fetch("/api/clientes");
+        const json = await res.json();
+        setProveedores(json);
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadProveedores();
+  }, []);
 
   const abrirPago = (factura) => {
     setFacturaSeleccionada(factura);
@@ -53,7 +71,7 @@ export default function FacturasPage({ title }) {
       const res = await fetch("/api/facturas-ventas/list", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(filters)
+        body: JSON.stringify(filters),
       });
 
       const json = await res.json();
@@ -65,21 +83,31 @@ export default function FacturasPage({ title }) {
     }
   };
 
+  /* =============================
+     VER DETALLE FACTURA
+  ============================= */
   const onVerDetalle = async (factura) => {
+    setLoading(true);
     setFacturaSeleccionada(factura);
 
-    const resp = await fetch(`/api/facturas-ventas/${factura.id}`);
-    const json = await resp.json();
+    try {
+      const resp = await fetch(`/api/facturas-ventas/${factura.id}`);
+      const json = await resp.json();
 
-    setDetalle(json.detalle || []);
-    setPagos(json.pagos || []);
-    setCliente({
-      cliente_dni: json.cliente_dni,
-      cliente_id: json.cliente_id,
-      cliente_nombre: json.cliente_nombre
-    });
+      setDetalle(json.detalle || []);
+      setPagos(json.pagos || []);
+      setProveedor({
+        proveedor_id: json.proveedor_id,
+        proveedor_nombre: json.proveedor_nombre,
+        proveedor_cuit: json.proveedor_cuit,
+      });
 
-    setOpenDetalle(true);
+      setOpenDetalle(true);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -89,44 +117,40 @@ export default function FacturasPage({ title }) {
       ⚙️ Opciones de búsqueda
       <Paper sx={{ p: 2, mb: 2 }}>
         <Box sx={{ display: "flex", flexWrap: "wrap", gap: 2 }}>
-          <TextField
-            sx={{ flex: "1 1 100px" }}
-            label="Punto Venta"
-            type="number"
-            value={filters.puntoVenta}
-            onChange={(e) =>
-              setFilters({ ...filters, puntoVenta: e.target.value })
+          {/* PROVEEDOR */}
+          <Autocomplete
+            sx={{ flex: "1 1 250px" }}
+            options={proveedores}
+            getOptionLabel={(p) => p.nombre || ""}
+            onChange={(_, value) =>
+              setFilters({
+                ...filters,
+                proveedor_id: value?.id || "",
+              })
             }
+            renderInput={(params) => (
+              <TextField {...params} label="Clientes" />
+            )}
           />
 
+          {/* ESTADO */}
           <TextField
-            sx={{ flex: "1 1 100px" }}
-            label="Número"
-            type="number"
-            value={filters.numero}
-            onChange={(e) =>
-              setFilters({ ...filters, numero: e.target.value })
-            }
-          />
-
-          <TextField
-            sx={{ flex: "1 1 30px" }}
+            sx={{ flex: "1 1 150px" }}
             select
-            label="Letra"
-            value={filters.letra}
+            label="Estado"
+            value={filters.estado}
             onChange={(e) =>
-              setFilters({ ...filters, letra: e.target.value })
+              setFilters({ ...filters, estado: e.target.value })
             }
           >
-            {letras.map((l) => (
-              <MenuItem key={l} value={l}>
-                {l}
-              </MenuItem>
-            ))}
+            <MenuItem value="TODAS">Todas</MenuItem>
+            <MenuItem value="PAGADA">Pagadas</MenuItem>
+            <MenuItem value="PENDIENTE">Pendientes</MenuItem>
           </TextField>
 
+          {/* FECHAS */}
           <TextField
-            sx={{ flex: "1 1 100px" }}
+            sx={{ flex: "1 1 150px" }}
             label="Fecha Desde"
             type="date"
             InputLabelProps={{ shrink: true }}
@@ -137,16 +161,17 @@ export default function FacturasPage({ title }) {
           />
 
           <TextField
-            sx={{ flex: "1 1 100px" }}
+            sx={{ flex: "1 1 150px" }}
             label="Fecha Hasta"
             type="date"
+            InputLabelProps={{ shrink: true }}
             value={filters.fechaHasta}
             onChange={(e) =>
               setFilters({ ...filters, fechaHasta: e.target.value })
             }
           />
 
-          <Box sx={{ flex: "1 1 100px" }}>
+          <Box sx={{ flex: "1 1 120px" }}>
             <Button variant="contained" onClick={buscar}>
               Buscar
             </Button>
@@ -161,17 +186,16 @@ export default function FacturasPage({ title }) {
         onAgregarPago={abrirPago}
       />
 
-      {/* MODAL DETALLE */}
+      {/* MODALES */}
       <ModalFactura
         open={openDetalle}
         onClose={() => setOpenDetalle(false)}
         factura={facturaSeleccionada}
-        cliente={cliente}
+        cliente={proveedor}
         detalle={detalle}
         pagos={pagos}
       />
 
-      {/* MODAL PAGO */}
       <PagoModal
         open={pagoModalOpen}
         onClose={() => setPagoModalOpen(false)}
@@ -179,7 +203,7 @@ export default function FacturasPage({ title }) {
         onGuardado={buscar}
       />
 
-      {/* SPINNER */}
+      {/* SPINNER GLOBAL */}
       <Backdrop
         open={loading}
         sx={{ color: "#fff", zIndex: (theme) => theme.zIndex.drawer + 1 }}

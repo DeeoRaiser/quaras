@@ -13,8 +13,10 @@ export async function POST(req) {
     const body = await req.json();
 
     console.log("body")
-    console.log(body)
-    const { puntoVenta, numero, letra, fechaDesde, fechaHasta, cliente_id, estado } = body || {};
+    console.log(body) 
+
+
+    const { puntoVenta, numero, letra, fechaDesde, fechaHasta, cliente_id , estado = "TODAS" } = body || {};
 
     let where = "WHERE 1=1";
     const params = [];
@@ -43,13 +45,15 @@ export async function POST(req) {
       where += " AND f.fecha <= ?";
       params.push(fechaHasta);
     }
-    if (cliente_id) {
-      where += " AND f.cliente_id <= ?";
+  if (cliente_id) {
+      where += " AND f.cliente_id = ?";
       params.push(cliente_id);
     }
 
     const conn = await getConnection();
+console.log(params)
 
+console.log(body)
     // ===========================================
     // 1️⃣ TRAER FACTURAS + CLIENTE + TOTALES
     // ===========================================
@@ -188,6 +192,7 @@ export async function POST(req) {
       };
     });
 
+    console.log("resultado")
     console.log(resultado)
 
     return NextResponse.json(resultado);

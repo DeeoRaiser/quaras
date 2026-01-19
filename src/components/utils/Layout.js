@@ -33,16 +33,18 @@ const panels = [
   },
   {
     title: "🏪 Proveedores",
-     children: [
+    children: [
       { title: "🏪 Lista Proveedores", route: "/proveedores" },
       { title: "📒 Cuenta Corriente", route: "/proveedores/cuenta-corriente" },
     ],
   },
   {
     title: "🧑‍🤝‍🧑 Clientes",
-     children: [
+    children: [
       { title: "🧑‍🤝‍🧑 Lista Clientes", route: "/clientes" },
-      { title: "📒 Cuenta Corriente", route: "/clientes/cuenta-corriente" },
+      { title: "📘 Cuenta Corriente", route: "/clientes/cuenta-corriente" },
+      { title: "➕ Nuevo Pago", route: "/clientes/orden-de-pago/nuevo-pago" },
+      { title: "🧾 Comprobantes de Pago", route: "/clientes/orden-de-pago/historial-pagos" },
     ],
   },
   {

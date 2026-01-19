@@ -125,136 +125,137 @@ export default function MovimientoABMForm({ movimiento, onSubmit, onClose }) {
         </Typography>
 
         <Box component="form" onSubmit={handleSubmit}>
-          <Grid container spacing={2}>
-            {/* Banco */}
-            <Grid item xs={12} sm={6}>
-              <TextField
-                select
-                fullWidth
-                label="Banco"
-                name="banco_id"
-                value={formData.banco_id}
-                onChange={handleChange}
-                required
-                disabled={saving}
-              >
-                {bancos.map((b) => (
-                  <MenuItem key={b.id} value={b.id}>
-                    {b.nombre}
-                  </MenuItem>
-                ))}
-              </TextField>
-            </Grid>
+<Box
+  sx={{
+    display: "grid",
+    gridTemplateColumns: {
+      xs: "1fr",
+      sm: "1fr 1fr",
+    },
+    gap: 2,
+  }}
+>
+  {/* Banco */}
+  <TextField
+    select
+    fullWidth
+    label="Banco"
+    name="banco_id"
+    value={formData.banco_id}
+    onChange={handleChange}
+    required
+    disabled={saving}
+  >
+    {bancos.map((b) => (
+      <MenuItem key={b.id} value={b.id}>
+        {b.nombre}
+      </MenuItem>
+    ))}
+  </TextField>
 
-            {/* Fecha */}
-            <Grid item xs={12} sm={6}>
-              <TextField
-                type="date"
-                fullWidth
-                label="Fecha"
-                name="fecha_movimiento"
-                value={formData.fecha_movimiento}
-                onChange={handleChange}
-                required
-                InputLabelProps={{ shrink: true }}
-                disabled={saving}
-              />
-            </Grid>
+  {/* Fecha */}
+  <TextField
+    type="date"
+    fullWidth
+    label="Fecha"
+    name="fecha_movimiento"
+    value={formData.fecha_movimiento}
+    onChange={handleChange}
+    required
+    InputLabelProps={{ shrink: true }}
+    disabled={saving}
+  />
 
-            {/* Tipo */}
-            <Grid item xs={12} sm={6}>
-              <TextField
-                select
-                fullWidth
-                label="Tipo"
-                name="tipo"
-                value={formData.tipo}
-                onChange={handleChange}
-                required
-                disabled={saving}
-              >
-                <MenuItem value="INGRESO">Ingreso</MenuItem>
-                <MenuItem value="EGRESO">Egreso</MenuItem>
-              </TextField>
-            </Grid>
+  {/* Tipo */}
+  <TextField
+    select
+    fullWidth
+    label="Tipo"
+    name="tipo"
+    value={formData.tipo}
+    onChange={handleChange}
+    required
+    disabled={saving}
+  >
+    <MenuItem value="INGRESO">Ingreso</MenuItem>
+    <MenuItem value="EGRESO">Egreso</MenuItem>
+  </TextField>
 
-            {/* Importe */}
-            <Grid item xs={12} sm={6}>
-              <TextField
-                type="number"
-                fullWidth
-                label="Importe"
-                name="importe"
-                value={formData.importe}
-                onChange={handleChange}
-                required
-                disabled={saving}
-              />
-            </Grid>
+  {/* Importe */}
+  <TextField
+    type="number"
+    fullWidth
+    label="Importe"
+    name="importe"
+    value={formData.importe}
+    onChange={handleChange}
+    required
+    disabled={saving}
+  />
 
-            {/* Concepto */}
-            <Grid item xs={12}>
-              <TextField
-                select
-                fullWidth
-                label="Concepto"
-                name="concepto_id"
-                value={formData.concepto_id}
-                onChange={handleChange}
-                required
-                disabled={saving}
-              >
-                {conceptos.map((c) => (
-                  <MenuItem key={c.id} value={c.id}>
-                    {c.concepto}
-                  </MenuItem>
-                ))}
-              </TextField>
-            </Grid>
+  {/* Concepto (ocupa 2 columnas) */}
+  <Box sx={{ gridColumn: "1 / -1" }}>
+    <TextField
+      select
+      fullWidth
+      label="Concepto"
+      name="concepto_id"
+      value={formData.concepto_id}
+      onChange={handleChange}
+      required
+      disabled={saving}
+    >
+      {conceptos.map((c) => (
+        <MenuItem key={c.id} value={c.id}>
+          {c.concepto}
+        </MenuItem>
+      ))}
+    </TextField>
+  </Box>
 
-            {/* Descripción */}
-            <Grid item xs={12}>
-              <TextField
-                fullWidth
-                multiline
-                rows={3}
-                label="Descripción"
-                name="descripcion"
-                value={formData.descripcion}
-                onChange={handleChange}
-                disabled={saving}
-              />
-            </Grid>
+  {/* Descripción (ocupa 2 columnas) */}
+  <Box sx={{ gridColumn: "1 / -1" }}>
+    <TextField
+      fullWidth
+      multiline
+      rows={3}
+      label="Descripción"
+      name="descripcion"
+      value={formData.descripcion}
+      onChange={handleChange}
+      disabled={saving}
+    />
+  </Box>
 
-            {/* Botones */}
-            <Grid
-              item
-              xs={12}
-              sx={{
-                display: "flex",
-                justifyContent: "flex-end",
-                gap: 2,
-                mt: 2,
-              }}
-            >
-              <Button
-                variant="outlined"
-                color="error"
-                onClick={onClose}
-                disabled={saving}
-              >
-                Cancelar
-              </Button>
-              <Button
-                variant="contained"
-                color="primary"
-                type="submit"
-                disabled={saving}
-              >
-                {movimiento ? "Actualizar" : "Guardar"}
-              </Button>
-            </Grid>
-          </Grid>
+  {/* Botones */}
+  <Box
+    sx={{
+      gridColumn: "1 / -1",
+      display: "flex",
+      justifyContent: "flex-end",
+      gap: 2,
+      mt: 2,
+    }}
+  >
+    <Button
+      variant="outlined"
+      color="error"
+      onClick={onClose}
+      disabled={saving}
+    >
+      Cancelar
+    </Button>
+    <Button
+      variant="contained"
+      color="primary"
+      type="submit"
+      disabled={saving}
+    >
+      {movimiento ? "Actualizar" : "Guardar"}
+    </Button>
+  </Box>
+</Box>
+
         </Box>
       </Paper>
 

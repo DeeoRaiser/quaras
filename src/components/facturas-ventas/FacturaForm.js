@@ -11,7 +11,7 @@ import AddIcon from '@mui/icons-material/Add';
 import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
 import { DatePicker } from "@mui/x-date-pickers/DatePicker";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
-import { Backdrop, CircularProgress  } from "@mui/material";
+import { Backdrop, CircularProgress } from "@mui/material";
 import PagoModal from "./modales/PagoModal";
 
 export default function FacturaForm() {
@@ -20,7 +20,7 @@ export default function FacturaForm() {
   const [productos, setProductos] = useState([]);
   const [puntosVenta, setPuntosVenta] = useState([]);
 
-  
+
   const [cliente_id, setClienteId] = useState("");
   const [puntoVenta, setPuntoVenta] = useState("");
   const [letra, setLetra] = useState("");
@@ -40,7 +40,7 @@ export default function FacturaForm() {
   const [nuevoAjustePorcentaje, setNuevoAjustePorcentaje] = useState("");
 
   const [tab, setTab] = useState(0);
-const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   const [pagos, setPagos] = useState([]);
   const [openPago, setOpenPago] = useState(false);
@@ -326,6 +326,9 @@ const [loading, setLoading] = useState(false);
           ))}
         </TextField>
 
+        <TextField label="Número" fullWidth disabled value={numeroFactura} />
+
+
         <TextField
           select
           label="Letra"
@@ -337,8 +340,6 @@ const [loading, setLoading] = useState(false);
             <MenuItem key={index} value={l}>{l}</MenuItem>
           ))}
         </TextField>
-
-        <TextField label="Número" fullWidth disabled value={numeroFactura} />
 
         <LocalizationProvider dateAdapter={AdapterDayjs}>
           <DatePicker

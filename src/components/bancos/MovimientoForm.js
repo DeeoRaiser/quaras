@@ -43,6 +43,12 @@ export default function MovimientosPage() {
     fetchBancos();
   }, []);
 
+  useEffect(() => {
+  const hoy = dayjs();
+  setHasta(hoy);
+  setDesde(hoy.subtract(7, "day"));
+}, []);
+
   const handleListar = async () => {
     if (!desde || !hasta) {
       setErrorFecha("Debes seleccionar ambas fechas.");
