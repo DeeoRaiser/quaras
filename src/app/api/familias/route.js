@@ -1,9 +1,11 @@
 import { getServerSession } from "next-auth";
 import { authOptions } from "../auth/[...nextauth]/route.js";
 import { NextResponse } from "next/server";
-import { getConnection } from "@/lib/db";
+import { prisma } from "@/lib/prisma";
 
-// Crear familia
+// =======================
+// POST → crear familia
+// =======================
 export async function POST(req) {
   try {
     const session = await getServerSession(authOptions);
@@ -12,20 +14,18 @@ export async function POST(req) {
 
     const { descripcion } = await req.json();
 
-    if (!descripcion) {
+    if (!descripcion || !descripcion.trim()) {
       return NextResponse.json(
         { error: "La descripción es obligatoria" },
         { status: 400 }
       );
     }
 
-    const conn = await getConnection();
-    const sql = `
-      INSERT INTO familias (descripcion)
-      VALUES (?)
-    `;
-
-    await conn.execute(sql, [descripcion]);
+    await prisma.familias.create({
+      data: {
+        descripcion,
+      },
+    });
 
     return NextResponse.json(
       { message: "Familia creada correctamente" },
@@ -40,19 +40,22 @@ export async function POST(req) {
   }
 }
 
-// Obtener todas las familias
+// =======================
+// GET → listar familias
+// =======================
 export async function GET() {
   try {
     const session = await getServerSession(authOptions);
     if (!session)
       return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
-    const conn = await getConnection();
-    const [rows] = await conn.query(
-      "SELECT * FROM familias ORDER BY nombre ASC"
-    );
+    const familias = await prisma.familias.findMany({
+      orderBy: {
+        nombre: "asc", // antes ORDER BY nombre (corregido)
+      },
+    });
 
-    return NextResponse.json(rows, { status: 200 });
+    return NextResponse.json(familias, { status: 200 });
   } catch (error) {
     console.error("Error GET /familias:", error);
     return NextResponse.json(

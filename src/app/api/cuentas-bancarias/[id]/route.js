@@ -1,7 +1,7 @@
 import { getServerSession } from "next-auth";
 import { authOptions } from "../auth/[...nextauth]/route";
 import { NextResponse } from "next/server";
-import { getConnection } from "@/lib/db";
+import { prisma } from "@/lib/prisma";
 
 function json(data, status = 200) {
   return NextResponse.json(data, { status });
@@ -13,28 +13,31 @@ async function requireAuth() {
 }
 
 // ============
-// PUT
+// PUT → Modificar cuenta bancaria
 // ============
 export async function PUT(req, { params }) {
   try {
     await requireAuth();
 
-    const id = params.id;
+    const id = Number(params.id);
     const { tipo, moneda, numero, cbu, alias, nota } = await req.json();
 
-    const conn = await getConnection();
-
-    await conn.execute(
-      `
-      UPDATE cuentas_bancarias
-      SET tipo=?, moneda=?, numero=?, cbu=?, alias=?, nota=?
-      WHERE id=?
-    `,
-      [tipo, moneda, numero, cbu || null, alias || null, nota || null, id]
-    );
+    await prisma.cuentas_bancarias.update({
+      where: { id },
+      data: {
+        tipo,
+        moneda,
+        numero,
+        cbu: cbu || null,
+        alias: alias || null,
+        nota: nota || null,
+      },
+    });
 
     return json({ message: "Cuenta modificada correctamente" });
   } catch (error) {
+    console.error(error);
+
     if (error.message === "UNAUTHORIZED")
       return json({ error: "No autorizado" }, 401);
 
@@ -43,19 +46,22 @@ export async function PUT(req, { params }) {
 }
 
 // ============
-// DELETE
+// DELETE → Eliminar cuenta bancaria
 // ============
 export async function DELETE(req, { params }) {
   try {
     await requireAuth();
 
-    const id = params.id;
+    const id = Number(params.id);
 
-    const conn = await getConnection();
-    await conn.execute("DELETE FROM cuentas_bancarias WHERE id=?", [id]);
+    await prisma.cuentas_bancarias.delete({
+      where: { id },
+    });
 
     return json({ message: "Cuenta eliminada correctamente" });
   } catch (error) {
+    console.error(error);
+
     if (error.message === "UNAUTHORIZED")
       return json({ error: "No autorizado" }, 401);
 

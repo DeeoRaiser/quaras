@@ -145,7 +145,6 @@ export default function PagoMultipleModal({
       onChange={e =>
         setPago(prev => ({ ...prev, fecha: e.target.value }))
       }
-      InputLabelProps={{ shrink: true }}
     />
   </Box>
 

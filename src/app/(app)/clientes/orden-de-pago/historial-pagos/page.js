@@ -54,7 +54,7 @@ export default function PagosPage() {
        CARGA INICIAL
     ============================= */
     const loadPagos = async () => {
-        const res = await fetch("/api/pagos/list");
+        const res = await fetch("/api/clientes/pagos/list");
         const json = await res.json();
         setPagos(json);
         setPagosFiltrados(json);

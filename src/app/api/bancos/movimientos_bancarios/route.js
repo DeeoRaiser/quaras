@@ -1,77 +1,154 @@
 import { NextResponse } from "next/server";
-import { getConnection } from "@/lib/db";
+import { prisma } from "@/lib/prisma";
 
+// ==========================
+// POST → CREAR MOVIMIENTO
+// ==========================
 export async function POST(req) {
   try {
     const data = await req.json();
 
-    console.log(data)
+    const {
+      banco_id,
+      fecha,
+      tipo,
+      monto,
+      descripcion,
+      concepto_id,
+      usuario_id
+    } = data;
 
-    const { banco_id, fecha_movimiento, tipo, importe, descripcion, concepto_id, usuario_id } = data;
+    await prisma.movimientos_bancarios.create({
+      data: {
+        banco_id: Number(banco_id),
+        fecha_: new Date(fecha),
+        tipo,
+        monto: Number(monto),
+        descripcion,
+        concepto_id: concepto_id || null,
+        usuario_id: Number(usuario_id)
+      }
+    });
 
-    const conn = await getConnection();
-    const query = `
-      INSERT INTO movimientos_bancarios (banco_id, fecha_movimiento, tipo, importe, descripcion, concepto_id, usuario_id )
-      VALUES (?, ?, ?, ?, ?, ?, ?)
-    `;
-    await conn.execute(query, [banco_id, fecha_movimiento, tipo, importe, descripcion, concepto_id, usuario_id]);
+    return NextResponse.json(
+      { message: "Movimiento creado correctamente" },
+      { status: 201 }
+    );
 
-    return NextResponse.json({ message: "Banco creado correctamente" }, { status: 201 });
   } catch (error) {
-    console.error(error);
-    return NextResponse.json({ error: "Error al crear banco" }, { status: 500 });
+    console.error("POST movimientos_bancarios error:", error);
+
+    return NextResponse.json(
+      { error: "Error al crear movimiento" },
+      { status: 500 }
+    );
   }
 }
 
-
+// ==========================
+// GET → LISTAR MOVIMIENTOS + SALDO
+// ==========================
 export async function GET(req) {
   try {
     const { searchParams } = new URL(req.url);
-    const banco_id = searchParams.get("banco_id");
+
+    const banco_id = Number(searchParams.get("banco_id"));
     const desde = searchParams.get("desde");
     const hasta = searchParams.get("hasta");
 
     if (!banco_id || !desde || !hasta) {
-      return NextResponse.json({ error: "Faltan parámetros" }, { status: 400 });
+      return NextResponse.json(
+        { error: "Faltan parámetros" },
+        { status: 400 }
+      );
     }
 
-    const connection = await getConnection();
+    // 1️⃣ Saldo anterior
+    const saldoAgg = await prisma.movimientos_bancarios.aggregate({
+      where: {
+        banco_id,
+        fecha: {
+          lt: new Date(desde)
+        }
+      },
+      _sum: {
+        monto: true
+      }
+    });
 
-    // 1️⃣ Calcular saldo hasta el día anterior
-    const [saldoRows] = await connection.execute(
-      `
-SELECT COALESCE(SUM(CASE WHEN tipo = 'INGRESO' THEN monto WHEN tipo = 'EGRESO' THEN -monto END), 0) AS saldoAnterior FROM movimientos_bancarios WHERE banco_id = ? AND fecha < ?;
-      `,
-      [banco_id, desde]
+    const ingresos = await prisma.movimientos_bancarios.aggregate({
+      where: {
+        banco_id,
+        tipo: "INGRESO",
+        fecha: {
+          lt: new Date(desde)
+        }
+      },
+      _sum: {
+        monto: true
+      }
+    });
+
+    const egresos = await prisma.movimientos_bancarios.aggregate({
+      where: {
+        banco_id,
+        tipo: "EGRESO",
+        fecha: {
+          lt: new Date(desde)
+        }
+      },
+      _sum: {
+        monto: true
+      }
+    });
+
+    const saldoAnterior =
+      (ingresos._sum.monto || 0) -
+      (egresos._sum.monto || 0);
+
+    // 2️⃣ Movimientos entre fechas
+    const movimientos = await prisma.movimientos_bancarios.findMany({
+      where: {
+        banco_id,
+        fecha: {
+          gte: new Date(desde),
+          lte: new Date(hasta)
+        }
+      },
+      include: {
+        usuarios: {
+          select: {
+            usuario: true
+          }
+        }
+      },
+      orderBy: {
+        fecha: "asc"
+      }
+    });
+
+    // Normalizar respuesta (como tu SQL)
+    const movimientosFormateados = movimientos.map(m => ({
+      id: m.id,
+      banco_id: m.banco_id,
+      fecha: m.fecha,
+      tipo: m.tipo,
+      monto: m.monto,
+      descripcion: m.descripcion,
+      usuario: m.usuarios?.usuario || null
+    }));
+
+    return NextResponse.json({
+      saldoAnterior,
+      movimientos: movimientosFormateados
+    });
+
+  } catch (error) {
+    console.error("GET movimientos_bancarios error:", error);
+
+    return NextResponse.json(
+      { error: "Error en el servidor" },
+      { status: 500 }
     );
-
-    const saldoAnterior = saldoRows[0].saldoAnterior || 0;
-
-    // 2️⃣ Traer movimientos entre fechas
-    const [movimientos] = await connection.execute(
-      `
-      SELECT 
-    mb.id,
-    mb.banco_id,
-    mb.fecha,
-    mb.tipo,
-    mb.monto,
-    mb.descripcion,
-    u.usuario
-FROM movimientos_bancarios AS mb
-INNER JOIN usuarios AS u 
-    ON mb.user_id = u.id
-WHERE mb.banco_id = ?
-  AND mb.fecha BETWEEN ? AND ?  
-ORDER BY mb.fecha ASC;
-
-      `,
-      [banco_id, desde, hasta]
-    );
-
-    return NextResponse.json({ saldoAnterior, movimientos });
-  } catch (err) {
-    console.error(err);
-    return NextResponse.json({ error: "Error en el servidor" }, { status: 500 });
   }
 }

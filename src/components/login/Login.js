@@ -23,7 +23,7 @@ export default function LoginPage() {
     if (res.error) {
       setError("Usuario o contraseña incorrectos");
     } else {
-      router.push("/bancos/bancos"); // redirigir al home o dashboard
+      router.push("/"); // redirigir al home o dashboard
     }
   };
 

@@ -202,8 +202,8 @@ export default function ArticuloForm({
           select
           fullWidth
           label="Centro de Costo"
-          name="centrosCostos"
-          value={form.centrosCostos ?? ""}
+          name="centro_costo_id"
+          value={form.centro_costo_id ?? ""}
           onChange={handleChange}
         >
           {(centroCostos || []).map((cc) => (

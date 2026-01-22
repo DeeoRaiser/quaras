@@ -71,24 +71,26 @@ export default function ClientesPage() {
       renderCell: (row) => (
         <div style={{ display: "flex", gap: "8px" }}>
           <IconButton
-                      color="primary"
-                      onClick={() => handleEdit(params.row)}
-                    >
-                      <EditIcon />
-                    </IconButton>
-          
-                    <IconButton
-                      color="error"
-                      onClick={() => {
-                        setDeleteId(params.row.id);
-                        setOpenDelete(true);
-                      }}
-                    >
-                      <DeleteIcon />
-                    </IconButton>
+            color="primary"
+            onClick={() => handleEdit(row)}
+          >
+            <EditIcon />
+          </IconButton>
+
+          <IconButton
+            color="error"
+            onClick={() => {
+              setDeleteId(row.id);
+              setOpenDelete(true);
+            }}
+          >
+            <DeleteIcon />
+          </IconButton>
         </div>
       ),
-    },
+    }
+
+
   ];
 
   // 🔹 Crear nuevo
@@ -112,11 +114,26 @@ export default function ClientesPage() {
   };
 
   // 🔹 Editar
-  const handleEdit = (row) => {
-    setForm(row);
-    setEditingId(row.id);
-    setIsEdit(true);
-    setOpenForm(true);
+ const handleEdit = (row) => {
+  console.log("row")
+  console.log(row)
+  setForm({
+    nombre: row.row.nombre,
+    apellido: row.row.apellido,
+    dni: row.row.dni,
+    cuit: row.row.cuit,
+    iva: row.row.iva,
+    direccion: row.row.direccion,
+    telefono: row.row.telefono,
+    email: row.row.email,
+    nota: row.row.nota,
+    iibb: row.row.iibb,
+    numiibb: row.row.numiibb,
+  })
+
+    setEditingId(row.id)
+    setIsEdit(true)
+    setOpenForm(true)
   };
 
   // 🔹 Guardar

@@ -1,14 +1,18 @@
 import { getServerSession } from "next-auth";
 import { authOptions } from "../auth/[...nextauth]/route.js";
 import { NextResponse } from "next/server";
-import { getConnection } from "@/lib/db";
+import {prisma} from "@/lib/prisma";
 
-// Crear clasificación
+
+// -----------------------------------------------------
+// POST: Crear clasificación
+// -----------------------------------------------------
 export async function POST(req) {
   try {
     const session = await getServerSession(authOptions);
-    if (!session)
+    if (!session) {
       return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+    }
 
     const { descripcion } = await req.json();
 
@@ -19,13 +23,9 @@ export async function POST(req) {
       );
     }
 
-    const conn = await getConnection();
-    const sql = `
-      INSERT INTO clasificaciones (descripcion)
-      VALUES (?)
-    `;
-
-    await conn.execute(sql, [descripcion]);
+    await prisma.clasificaciones.create({
+      data: { descripcion }
+    });
 
     return NextResponse.json(
       { message: "Clasificación creada correctamente" },
@@ -40,19 +40,24 @@ export async function POST(req) {
   }
 }
 
-// Obtener todas las clasificaciones
+
+// -----------------------------------------------------
+// GET: Obtener todas las clasificaciones
+// -----------------------------------------------------
 export async function GET() {
   try {
     const session = await getServerSession(authOptions);
-    if (!session)
+    if (!session) {
       return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+    }
 
-    const conn = await getConnection();
-    const [rows] = await conn.query(
-      "SELECT * FROM clasificaciones ORDER BY nombre ASC"
-    );
+    const clasificaciones = await prisma.clasificaciones.findMany({
+      orderBy: {
+        nombre: "asc"
+      }
+    });
 
-    return NextResponse.json(rows, { status: 200 });
+    return NextResponse.json(clasificaciones, { status: 200 });
   } catch (error) {
     console.error("Error GET /clasificaciones:", error);
     return NextResponse.json(

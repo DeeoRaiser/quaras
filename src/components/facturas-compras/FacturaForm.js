@@ -56,7 +56,9 @@ export default function FacturaForm() {
     const base = toNumber(item.precio_compra) * toNumber(item.cantidad);
     const ajustePct = toNumber(item.ajuste);
     const ajusteMonto = (base * ajustePct) / 100;
-    return base + ajusteMonto;
+    const subtotalLinea = base + ajusteMonto
+    item.subtotalLinea = subtotalLinea
+    return subtotalLinea;
   };
 
   // ───── FETCHS INICIALES ─────
@@ -102,7 +104,7 @@ export default function FacturaForm() {
       }
     };
 
-        console.log("PROVEEDORES")
+    console.log("PROVEEDORES")
     console.log(proveedores)
 
     fetchProductos();
@@ -266,11 +268,12 @@ export default function FacturaForm() {
       };
     });
 
+
     const facturaPayload = {
       proveedor_id,
-      puntoVenta,
+      puntoVenta: Number(puntoVenta),
       letra,
-      numero: numeroFactura,
+      numero: Number(numeroFactura),
       fecha: fecha ? fecha.format("YYYY-MM-DD HH:mm:ss") : dayjs().format("YYYY-MM-DD HH:mm:ss"),
       detalle,
       subtotalSinIVA: Number(subtotalSinIVA.toFixed(2)),
@@ -324,18 +327,18 @@ export default function FacturaForm() {
     <Paper sx={{ p: 3, mt: 2 }}>
       <Typography variant="h5" mb={3}>Cargar Factura COMPRAS</Typography>
 
-        {/* PROVEEDOR */}
-        <Autocomplete
-          sx={{ flex: 2, mb: 3}}
-          options={proveedores}
-          getOptionLabel={(option) => option.nombre || ""}
-          value={proveedores.find(c => c.id === proveedor_id) || null}
-          onChange={(event, newValue) => setProveedorId(newValue ? newValue.id : "")}
-          renderInput={(params) => (
-            <TextField {...params} label="Proveedor" fullWidth />
-          )}
+      {/* PROVEEDOR */}
+      <Autocomplete
+        sx={{ flex: 2, mb: 3 }}
+        options={proveedores}
+        getOptionLabel={(option) => option.nombre || ""}
+        value={proveedores.find(c => c.id === proveedor_id) || null}
+        onChange={(event, newValue) => setProveedorId(newValue ? newValue.id : "")}
+        renderInput={(params) => (
+          <TextField {...params} label="Proveedor" fullWidth />
+        )}
 
-        />
+      />
 
       {/* PV - LETRA - NUMERO - FECHA */}
       <Box sx={{ display: "flex", gap: 2, mb: 3 }}>
@@ -343,9 +346,16 @@ export default function FacturaForm() {
           label="Punto de Venta"
           value={puntoVenta}
           fullWidth
-          onChange={(e) => setPuntoVenta(e.target.value)}
+          onChange={(e) => setPuntoVenta(Number(e.target.value))}
         >
         </TextField>
+
+        <TextField
+          label="Número"
+          fullWidth
+          value={numeroFactura}
+          onChange={(e) => setNumeroFactura(Number(e.target.value))}
+        />
 
         <TextField
           label="Letra"
@@ -354,14 +364,6 @@ export default function FacturaForm() {
           onChange={(e) => setLetra(e.target.value)}
         >
         </TextField>
-
-        <TextField
-          label="Número"
-          fullWidth
-          value={numeroFactura}
-          onChange={(e) => {
-            setNumeroFactura(e.target.value);
-          }} />
 
         <LocalizationProvider dateAdapter={AdapterDayjs}>
           <DatePicker
@@ -379,7 +381,7 @@ export default function FacturaForm() {
         onChange={(e, value) => agregarArticulo(value)}
         onInputChange={(e, value) => setBuscarArticulo(value)}
         getOptionLabel={(option) =>
-          option ? `${option.descripcion} - $${option.precio_compra}` : ""
+          option ? `${option.descripcion}` : ""
         }
         renderInput={(params) =>
           <TextField {...params} label="Buscar artículo del proveedor" fullWidth />

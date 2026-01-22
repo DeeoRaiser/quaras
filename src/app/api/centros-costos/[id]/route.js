@@ -1,32 +1,32 @@
 import { getServerSession } from "next-auth";
 import { authOptions } from "../auth/[...nextauth]/route.js";
 import { NextResponse } from "next/server";
-import { getConnection } from "@/lib/db";
+import {prisma} from "@/lib/prisma";
 
-// Obtener un centro de costo por ID
+
+// -----------------------------------------------------
+// GET: Obtener un centro de costo por ID
+// -----------------------------------------------------
 export async function GET(req, { params }) {
   try {
     const session = await getServerSession(authOptions);
-    if (!session) {
+    if (!session)
       return NextResponse.json({ error: "No autorizado" }, { status: 401 });
-    }
 
-    const { id } = params;
-    const conn = await getConnection();
+    const id = Number(params.id);
 
-    const [rows] = await conn.query(
-      "SELECT * FROM centros_costo WHERE id = ?",
-      [id]
-    );
+    const centro = await prisma.centros_costos.findUnique({
+      where: { id }
+    });
 
-    if (rows.length === 0) {
+    if (!centro) {
       return NextResponse.json(
         { error: "Centro de costo no encontrado" },
         { status: 404 }
       );
     }
 
-    return NextResponse.json(rows[0], { status: 200 });
+    return NextResponse.json(centro, { status: 200 });
   } catch (error) {
     console.error("Error GET /centros-costo/[id]:", error);
     return NextResponse.json(
@@ -36,15 +36,17 @@ export async function GET(req, { params }) {
   }
 }
 
-// Actualizar centro de costo
+
+// -----------------------------------------------------
+// PUT: Actualizar centro de costo
+// -----------------------------------------------------
 export async function PUT(req, { params }) {
   try {
     const session = await getServerSession(authOptions);
-    if (!session) {
+    if (!session)
       return NextResponse.json({ error: "No autorizado" }, { status: 401 });
-    }
 
-    const { id } = params;
+    const id = Number(params.id);
     const { nombre, descripcion } = await req.json();
 
     if (!nombre || nombre.trim() === "") {
@@ -54,16 +56,25 @@ export async function PUT(req, { params }) {
       );
     }
 
-    const conn = await getConnection();
+    // Validar existencia
+    const existe = await prisma.centros_costos.findUnique({
+      where: { id }
+    });
 
-    await conn.execute(
-      `
-      UPDATE centros_costo
-      SET nombre = ?, descripcion = ?
-      WHERE id = ?
-    `,
-      [nombre, descripcion || null, id]
-    );
+    if (!existe) {
+      return NextResponse.json(
+        { error: "Centro de costo no encontrado" },
+        { status: 404 }
+      );
+    }
+
+    await prisma.centros_costos.update({
+      where: { id },
+      data: {
+        nombre,
+        descripcion: descripcion ?? null
+      }
+    });
 
     return NextResponse.json(
       { message: "Centro de costo actualizado correctamente" },
@@ -78,18 +89,33 @@ export async function PUT(req, { params }) {
   }
 }
 
-// Eliminar centro de costo
+
+// -----------------------------------------------------
+// DELETE: Eliminar centro de costo
+// -----------------------------------------------------
 export async function DELETE(req, { params }) {
   try {
     const session = await getServerSession(authOptions);
-    if (!session) {
+    if (!session)
       return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+
+    const id = Number(params.id);
+
+    // Validar existencia
+    const existe = await prisma.centros_costos.findUnique({
+      where: { id }
+    });
+
+    if (!existe) {
+      return NextResponse.json(
+        { error: "Centro de costo no encontrado" },
+        { status: 404 }
+      );
     }
 
-    const { id } = params;
-    const conn = await getConnection();
-
-    await conn.execute("DELETE FROM centros_costo WHERE id = ?", [id]);
+    await prisma.centros_costos.delete({
+      where: { id }
+    });
 
     return NextResponse.json(
       { message: "Centro de costo eliminado correctamente" },

@@ -1,28 +1,33 @@
 import { getServerSession } from "next-auth";
 import { authOptions } from "../../auth/[...nextauth]/route";
 import { NextResponse } from "next/server";
-import { getConnection } from "@/lib/db";
+import { prisma } from "@/lib/prisma";
 
 // Obtener un IVA
 export async function GET(req, { params }) {
   try {
     const session = await getServerSession(authOptions);
-    if (!session)
+    if (!session) {
       return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+    }
 
     const { id } = params;
 
-    const conn = await getConnection();
-    const [rows] = await conn.query("SELECT * FROM iva WHERE id = ?", [id]);
+    const iva = await prisma.iva.findUnique({
+      where: { id: Number(id) },
+    });
 
-    if (rows.length === 0) {
+    if (!iva) {
       return NextResponse.json({ error: "IVA no encontrado" }, { status: 404 });
     }
 
-    return NextResponse.json(rows[0], { status: 200 });
+    return NextResponse.json(iva, { status: 200 });
   } catch (error) {
     console.error("Error GET /iva/[id]:", error);
-    return NextResponse.json({ error: "Error al obtener IVA" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Error al obtener IVA" },
+      { status: 500 }
+    );
   }
 }
 
@@ -30,8 +35,9 @@ export async function GET(req, { params }) {
 export async function PUT(req, { params }) {
   try {
     const session = await getServerSession(authOptions);
-    if (!session)
+    if (!session) {
       return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+    }
 
     const { id } = params;
     const { descripcion, porcentaje } = await req.json();
@@ -43,11 +49,22 @@ export async function PUT(req, { params }) {
       );
     }
 
-    const conn = await getConnection();
-    await conn.execute(
-      "UPDATE iva SET descripcion = ?, porcentaje = ? WHERE id = ?",
-      [descripcion, porcentaje, id]
-    );
+    // Verificar existencia
+    const exists = await prisma.iva.findUnique({
+      where: { id: Number(id) },
+    });
+
+    if (!exists) {
+      return NextResponse.json({ error: "IVA no encontrado" }, { status: 404 });
+    }
+
+    await prisma.iva.update({
+      where: { id: Number(id) },
+      data: {
+        descripcion,
+        porcentaje: Number(porcentaje),
+      },
+    });
 
     return NextResponse.json(
       { message: "IVA actualizado correctamente" },
@@ -55,28 +72,9 @@ export async function PUT(req, { params }) {
     );
   } catch (error) {
     console.error("Error PUT /iva/[id]:", error);
-    return NextResponse.json({ error: "Error al actualizar IVA" }, { status: 500 });
-  }
-}
-
-// Eliminar IVA
-export async function DELETE(req, { params }) {
-  try {
-    const session = await getServerSession(authOptions);
-    if (!session)
-      return NextResponse.json({ error: "No autorizado" }, { status: 401 });
-
-    const { id } = params;
-
-    const conn = await getConnection();
-    await conn.execute("DELETE FROM iva WHERE id = ?", [id]);
-
     return NextResponse.json(
-      { message: "IVA eliminado correctamente" },
-      { status: 200 }
+      { error: "Error al actualizar IVA" },
+      { status: 500 }
     );
-  } catch (error) {
-    console.error("Error DELETE /iva/[id]:", error);
-    return NextResponse.json({ error: "Error al eliminar IVA" }, { status: 500 });
   }
 }

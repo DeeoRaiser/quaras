@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
-import { getConnection } from "@/lib/db";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import { prisma } from "@/lib/prisma";
 
 export async function POST(req) {
   try {
@@ -9,7 +9,6 @@ export async function POST(req) {
     if (!session)
       return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
-    const body = await req.json();
     const {
       puntoVenta,
       numero,
@@ -18,198 +17,111 @@ export async function POST(req) {
       fechaHasta,
       proveedor_id,
       estado = "TODAS"
-    } = body || {};
+    } = await req.json();
 
+    /* =========================
+       WHERE DINÁMICO
+    ========================= */
+    const where = {};
 
-    console.log("body")
+    if (puntoVenta) where.punto_vta = puntoVenta;
+    if (numero) where.numero = numero;
+    if (letra) where.letra = letra;
+    if (proveedor_id) where.proveedor_id = proveedor_id;
 
-    console.log(body)
-
-
-    let where = "WHERE 1=1";
-    const params = [];
-
-    if (puntoVenta) {
-      where += " AND fc.punto_vta = ?";
-      params.push(puntoVenta);
+    if (fechaDesde || fechaHasta) {
+      where.fecha = {};
+      if (fechaDesde) where.fecha.gte = new Date(fechaDesde);
+      if (fechaHasta) where.fecha.lte = new Date(fechaHasta);
     }
+    /* =========================
+       FACTURAS + RELACIONES
+    ========================= */
+    const facturas = await prisma.factura_compras.findMany({
+      where,
+      orderBy: [
+        { fecha: "desc" },
+        { id: "desc" }
+      ],
+      include: {
+        proveedores: { // ← nombre exacto de la relación al proveedor
+          select: {
+            nombre: true,
+            razonsocial: true,
+            cuit: true
+          }
+        },
+        factura_compra_detalle: true,
+        factura_compra_impuestos: true,
+        factura_compra_ajustes_pie: true,
+        aplicaciones_pagos_compras: {
+          include: {
+            pagos_compras: { // ← relación exacta hacia los pagos
+              select: {
+                id: true,
+                fecha: true,
+                metodo: true
+              }
+            }
+          }
+        }
+      }
+    });
 
-    if (numero) {
-      where += " AND fc.numero = ?";
-      params.push(numero);
-    }
 
-    if (estado !== "TODAS") {
-      where += " AND f.estado = ?";
-      params.push(estado);
-    }
+    /* =========================
+       ARMAR RESPUESTA FINAL
+    ========================= */
+    const resultado = facturas.map(fc => {
+      const totalFactura = Number(fc.total || 0);
 
-    if (letra) {
-      where += " AND fc.letra = ?";
-      params.push(letra);
-    }
+      const totalPagado = fc.aplicaciones_pagos_compras.reduce(
+        (acc, p) => acc + Number(p.monto_aplicado || 0),
+        0
+      );
 
-    if (fechaDesde) {
-      where += " AND fc.fecha >= ?";
-      params.push(fechaDesde);
-    }
+      const saldo = Math.max(0, +(totalFactura - totalPagado).toFixed(2));
 
-    if (fechaHasta) {
-      where += " AND fc.fecha <= ?";
-      params.push(fechaHasta);
-    }
+      const estadoCalculado =
+        saldo <= 0
+          ? "PAGADA"
+          : totalPagado > 0
+            ? "PARCIAL"
+            : "PENDIENTE";
 
-    if (proveedor_id) {
-      where += " AND fc.proveedor_id = ?";
-      params.push(proveedor_id);
-    }
+      return {
+        id: fc.id,
+        punto_vta: fc.punto_vta,
+        numero: fc.numero,
+        letra: fc.letra,
+        fecha: fc.fecha,
+        proveedor_id: fc.proveedor_id,
+        proveedor_nombre: fc.proveedores?.nombre || null,
+        proveedor_cuit: fc.proveedores?.cuit || null,
 
-    const conn = await getConnection();
+        detalle: fc.factura_compra_detalle,
+        impuestos: fc.factura_compra_impuestos,
+        ajustesPie: fc.factura_compra_ajustes_pie,
 
-    /* ==========================================
-       1️⃣ FACTURAS + PROVEEDOR + PAGOS
-    ========================================== */
+        pagos: fc.aplicaciones_pagos_compras.map(ap => ({
+          id: ap.pagos_compras.id,
+          factura_id: ap.factura_id,
+          fecha: ap.pagos_compras.fecha,
+          metodo: ap.pagos_compras.metodo,
+          monto_aplicado: ap.monto_aplicado
+        })),
 
-    console.log(params)
-
-    const [facturas] = await conn.query(
-      `
-      SELECT 
-        fc.id,
-        fc.punto_vta,
-        fc.numero,
-        fc.letra,
-        fc.fecha,
-        fc.proveedor_id,
-        pr.nombre AS proveedor_nombre,
-        pr.cuit AS proveedor_cuit,
-        COALESCE(fc.total, 0) AS totalFactura,
-        COALESCE(SUM(ap.monto_aplicado), 0) AS totalPagado
-      FROM factura_compras fc
-      LEFT JOIN proveedores pr ON pr.id = fc.proveedor_id
-      LEFT JOIN aplicaciones_pagos_compras ap ON ap.factura_id = fc.id
-      ${where}
-      GROUP BY fc.id
-      ORDER BY fc.fecha DESC, fc.id DESC
-      `,
-      params
+        totalFactura: totalFactura.toFixed(2),
+        totalPagado: totalPagado.toFixed(2),
+        saldoPendiente: saldo.toFixed(2),
+        estado: estadoCalculado
+      };
+    }).filter(f =>
+      estado === "TODAS" || f.estado === estado
     );
-
-    if (facturas.length === 0) {
-      return NextResponse.json([]);
-    }
-
-    const ids = facturas.map((f) => f.id);
-
-    /* ==========================================
-       2️⃣ DETALLE
-    ========================================== */
-    const [detalle] = await conn.query(
-      `
-      SELECT 
-        id,
-        factura_id,
-        articulo_id,
-        descripcion,
-        cantidad,
-        ajuste,
-        precio_compra,
-        iva,
-        subtotal,
-        centro_costo_id
-      FROM factura_compra_detalle
-      WHERE factura_id IN (?)
-      ORDER BY id
-      `,
-      [ids]
-    );
-
-    /* ==========================================
-       3️⃣ IMPUESTOS
-    ========================================== */
-    const [impuestos] = await conn.query(
-      `
-      SELECT
-        id,
-        factura_id,
-        impuesto_id,
-        codigo,
-        nombre,
-        alicuota,
-        base_imponible,
-        monto
-      FROM factura_compra_impuestos
-      WHERE factura_id IN (?)
-      `,
-      [ids]
-    );
-
-    /* ==========================================
-       4️⃣ AJUSTES PIE
-    ========================================== */
-    const [ajustesPie] = await conn.query(
-      `
-      SELECT 
-        id,
-        factura_id,
-        nombre,
-        porcentaje,
-        monto
-      FROM factura_compra_ajustes_pie
-      WHERE factura_id IN (?)
-      `,
-      [ids]
-    );
-
-    /* ==========================================
-       5️⃣ PAGOS
-    ========================================== */
-    const [pagos] = await conn.query(
-      `
-      SELECT 
-        pc.id,
-        ap.factura_id,
-        pc.fecha,
-        pc.metodo,
-        ap.monto_aplicado
-      FROM aplicaciones_pagos_compras ap
-      INNER JOIN pagos_compras pc ON pc.id = ap.pago_id
-      WHERE ap.factura_id IN (?)
-      `,
-      [ids]
-    );
-
-    /* ==========================================
-       6️⃣ ARMAR RESPUESTA FINAL
-    ========================================== */
-    const resultado = facturas
-      .map((f) => {
-        const totalFactura = Number(f.totalFactura) || 0;
-        const totalPagado = Number(f.totalPagado) || 0;
-        const saldo = Math.max(0, +(totalFactura - totalPagado).toFixed(2));
-
-        const estadoCalculado =
-          saldo <= 0
-            ? "PAGADA"
-            : totalPagado > 0
-              ? "PARCIAL"
-              : "PENDIENTE";
-
-        return {
-          ...f,
-          detalle: detalle.filter((d) => d.factura_id === f.id),
-          impuestos: impuestos.filter((i) => i.factura_id === f.id),
-          ajustesPie: ajustesPie.filter((a) => a.factura_id === f.id),
-          pagos: pagos.filter((p) => p.factura_id === f.id),
-          totalFactura: totalFactura.toFixed(2),
-          totalPagado: totalPagado.toFixed(2),
-          saldoPendiente: saldo.toFixed(2),
-          estado: estadoCalculado,
-        };
-      })
-      .filter((f) => !estado || estado === "TODAS" || f.estado === estado);
 
     return NextResponse.json(resultado);
+
   } catch (error) {
     console.error("POST /facturas-compras/list error:", error);
     return NextResponse.json(

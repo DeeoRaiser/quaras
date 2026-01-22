@@ -1,32 +1,32 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "../../auth/[...nextauth]/route";
-import { getConnection } from "@/lib/db";
+import {prisma} from "@/lib/prisma";
 
-// ➤ Obtener un solo proveedor
+/* =============================
+   ➤ OBTENER UN PROVEEDOR
+============================= */
 export async function GET(req, { params }) {
   try {
     const session = await getServerSession(authOptions);
-    if (!session) {
+    if (!session)
       return NextResponse.json({ error: "No autorizado" }, { status: 401 });
-    }
 
-    const { id } = params;
+    const id = Number(params.id);
 
-    const conn = await getConnection();
-    const [rows] = await conn.query(
-      "SELECT * FROM proveedores WHERE id = ? LIMIT 1",
-      [id]
-    );
+    const proveedor = await prisma.proveedores.findUnique({
+      where: { id }
+    });
 
-    if (rows.length === 0) {
+    if (!proveedor) {
       return NextResponse.json(
         { error: "Proveedor no encontrado" },
         { status: 404 }
       );
     }
 
-    return NextResponse.json(rows[0]);
+    return NextResponse.json(proveedor);
+
   } catch (error) {
     console.error("GET proveedor error:", error);
     return NextResponse.json(
@@ -36,61 +36,64 @@ export async function GET(req, { params }) {
   }
 }
 
-// ➤ Actualizar proveedor
+/* =============================
+   ➤ ACTUALIZAR PROVEEDOR
+============================= */
 export async function PUT(req, { params }) {
   try {
     const session = await getServerSession(authOptions);
     if (!session) {
-      return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+      return NextResponse.json(
+        { error: "No autorizado" },
+        { status: 401 }
+      );
     }
 
-    const { id } = params;
-    const data = await req.json();
+    // ✅ params es Promise en Route Handlers
+    const { id } = await params;
+    const proveedorId = Number(id);
 
+    if (!proveedorId || isNaN(proveedorId)) {
+      return NextResponse.json(
+        { error: "ID de proveedor inválido" },
+        { status: 400 }
+      );
+    }
+
+    const data = await req.json();
     const {
       nombre,
       cuit,
       direccion,
       telefono,
       email,
-      contacto,
       nota
     } = data;
 
-    const conn = await getConnection();
-    const [result] = await conn.execute(
-      `UPDATE proveedores SET 
-        nombre = ?, 
-        cuit = ?, 
-        direccion = ?, 
-        telefono = ?, 
-        email = ?, 
-        contacto = ?, 
-        nota = ?
-       WHERE id = ?`,
-      [
-        nombre || null,
-        cuit || null,
-        direccion || null,
-        telefono || null,
-        email || null,
-        contacto || null,
-        nota || null,
-        id
-      ]
-    );
+    await prisma.proveedores.update({
+      where: { id: proveedorId },
+      data: {
+        nombre: nombre ?? null,
+        cuit: cuit ?? null,
+        direccion: direccion ?? null,
+        telefono: telefono ?? null,
+        email: email ?? null,
+        nota: nota ?? null
+      }
+    });
 
-    if (result.affectedRows === 0) {
+    return NextResponse.json({
+      message: "Proveedor actualizado correctamente"
+    });
+
+  } catch (error) {
+    if (error.code === "P2025") {
       return NextResponse.json(
         { error: "Proveedor no encontrado" },
         { status: 404 }
       );
     }
 
-    return NextResponse.json({
-      message: "Proveedor actualizado correctamente"
-    });
-  } catch (error) {
     console.error("PUT proveedor error:", error);
     return NextResponse.json(
       { error: "Error al actualizar proveedor" },
@@ -99,37 +102,33 @@ export async function PUT(req, { params }) {
   }
 }
 
-// ➤ Eliminar proveedor
-export async function DELETE(req, context) {
+/* =============================
+   ➤ ELIMINAR PROVEEDOR
+============================= */
+export async function DELETE(req, { params }) {
   try {
     const session = await getServerSession(authOptions);
-    if (!session) {
+    if (!session)
       return NextResponse.json({ error: "No autorizado" }, { status: 401 });
-    }
 
-    // 👇 esto resuelve params correctamente
-    const { id } = await context.params;
+    const id = Number(params.id);
 
-    console.log("ID RECIBIDO:", id);
-
-    const conn = await getConnection();
-    const [result] = await conn.execute(
-      "DELETE FROM proveedores WHERE id = ?",
-      [id]
-    );
-
-    if (result.affectedRows === 0) {
-      return NextResponse.json(
-        { error: "Proveedor no encontrado" },
-        { status: 404 }
-      );
-    }
+    await prisma.proveedores.delete({
+      where: { id }
+    });
 
     return NextResponse.json({
       message: "Proveedor eliminado correctamente"
     });
 
   } catch (error) {
+    if (error.code === "P2025") {
+      return NextResponse.json(
+        { error: "Proveedor no encontrado" },
+        { status: 404 }
+      );
+    }
+
     console.error("DELETE proveedor error:", error);
     return NextResponse.json(
       { error: "Error al eliminar proveedor" },
@@ -137,4 +136,3 @@ export async function DELETE(req, context) {
     );
   }
 }
-

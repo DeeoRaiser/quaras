@@ -1,23 +1,28 @@
 import { NextResponse } from "next/server";
-import { getConnection } from "@/lib/db";
+import { prisma } from "@/lib/prisma";
 
 export async function PUT(req, { params }) {
     try {
-        const { id } = params
-        const data = await req.json()
-        const { nombre, parent_id } = data
+        const id = Number(params.id);
+        const data = await req.json();
 
-        const conn = await getConnection()
+        const { nombre, parent_id } = data;
 
-        const query =
-            `UPDATE clasificacion_conceptos_bancarios
-      SET nombre = ?, parent_id  = ?  WHERE id = ?`
+        await prisma.clasificacion_conceptos_bancarios.update({
+            where: { id },
+            data: {
+                nombre,
+                parent_id
+            }
+        });
 
-        await conn.execute(query, [nombre, parent_id, id])
+        return NextResponse.json({
+            message: "Concepto bancario actualizado correctamente"
+        });
 
-        return NextResponse.json({ message: "Concepto bancario actualizado correctamente" })
     } catch (error) {
-        console.error(error)
+        console.error("PUT concepto bancario error:", error);
+
         return NextResponse.json(
             { error: "Error al actualizar concepto bancario" },
             { status: 500 }
@@ -25,20 +30,24 @@ export async function PUT(req, { params }) {
     }
 }
 
-
 export async function DELETE(req, { params }) {
     try {
-        const { id } = params
-        const conn = await getConnection()
+        const id = Number(params.id);
 
-        await conn.execute("DELETE FROM clasificacion_conceptos_bancarios WHERE id = ?", [id])
+        await prisma.clasificacion_conceptos_bancarios.delete({
+            where: { id }
+        });
 
-        return NextResponse.json({ message: "Concepto bancario eliminado correctamente" })
+        return NextResponse.json({
+            message: "Concepto bancario eliminado correctamente"
+        });
+
     } catch (error) {
-        console.error(error)
-        return NextResponse.json(
-            { error: "Error al eliminar banco" },
-            { status: 500 }
-        )
+        if (error.code === "P2003") {
+            return NextResponse.json(
+                { error: "No se puede eliminar: tiene conceptos hijos" },
+                { status: 400 }
+            );
+        }
     }
 }

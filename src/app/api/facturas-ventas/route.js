@@ -1,12 +1,13 @@
 import { getServerSession } from "next-auth";
 import { authOptions } from "../auth/[...nextauth]/route";
 import { NextResponse } from "next/server";
-import { getConnection } from "@/lib/db";
+import { prisma } from "@/lib/prisma";
 
 export async function GET(req) {
   try {
     const session = await getServerSession(authOptions);
-    if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+    if (!session)
+      return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
     const { searchParams } = new URL(req.url);
 
@@ -16,65 +17,53 @@ export async function GET(req) {
     const fechaDesde = searchParams.get("fechaDesde");
     const fechaHasta = searchParams.get("fechaHasta");
 
-    let query = `
-      SELECT f.*, c.nombre AS cliente_nombre
-      FROM facturas f
-      LEFT JOIN clientes c ON c.id = f.cliente_id
-      WHERE 1=1
-    `;
+    const where = {
+      ...(puntoVenta && { punto_vta: Number(puntoVenta) }),
+      ...(letra && { letra }),
+      ...(numero && { numero: Number(numero) }),
+      ...((fechaDesde || fechaHasta) && {
+        fecha: {
+          ...(fechaDesde && { gte: new Date(`${fechaDesde}T00:00:00`) }),
+          ...(fechaHasta && { lte: new Date(`${fechaHasta}T23:59:59`) }),
+        },
+      }),
+    };
 
-    const params = [];
+    const facturas = await prisma.facturas.findMany({
+      where,
+      include: {
+        clientes: {
+          select: { nombre: true },
+        },
+      },
+      orderBy: [{ fecha: "desc" }, { id: "desc" }],
+    });
 
-    if (puntoVenta) {
-      query += " AND f.puntoVenta = ?";
-      params.push(puntoVenta);
-    }
+    // compatibilidad con tu SELECT anterior
+    const result = facturas.map(f => ({
+      ...f,
+      cliente_nombre: f.clientes?.nombre || null,
+    }));
 
-    if (letra) {
-      query += " AND f.letra = ?";
-      params.push(letra);
-    }
-
-    if (numero) {
-      query += " AND f.numero = ?";
-      params.push(numero);
-    }
-
-    if (fechaDesde) {
-      query += " AND f.fecha >= ?";
-      params.push(fechaDesde + " 00:00:00");
-    }
-
-    if (fechaHasta) {
-      query += " AND f.fecha <= ?";
-      params.push(fechaHasta + " 23:59:59");
-    }
-
-    query += `
-      ORDER BY f.fecha DESC, f.id DESC
-    `;
-
-    const conn = await getConnection();
-    const [rows] = await conn.query(query, params);
-
-    return NextResponse.json(rows);
+    return NextResponse.json(result);
   } catch (error) {
     console.error("GET /facturas error:", error);
-    return NextResponse.json({ error: "Error al obtener facturas" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Error al obtener facturas" },
+      { status: 500 }
+    );
   }
 }
 
-// Crear factura (y detalle + pagos opcionales)
 export async function POST(req) {
   try {
     const session = await getServerSession(authOptions);
-    if (!session) {
+    if (!session)
       return NextResponse.json({ error: "No autorizado" }, { status: 401 });
-    }
+
     const userId = session.user.id;
     const data = await req.json();
 
-    // Tomar todos los datos de frontend (ya calculados previamente en FE)
     const {
       cliente_id,
       fecha,
@@ -87,342 +76,213 @@ export async function POST(req) {
       puntoVenta,
       letra,
       totalFinal,
-      totalIVA,
-      totalImpuestos,
-      totalAjustesPie,
-      saldo: saldoCalculado, // frontend calcula saldo
-      estado: estadoCalculado, // frontend calcula estado
+      saldo: saldoCalculado,
+      estado: estadoCalculado,
     } = data;
 
-
-    console.log("data")
-    console.log(data)
-
     if (!cliente_id || !fecha) {
-      return NextResponse.json({ error: "Faltan datos obligatorios" }, { status: 400 });
-    }
-
-    const conn = await getConnection();
-
-    // ============================================================
-    // 1. OBTENER PUNTO DE VENTA DEL USUARIO
-    // ============================================================
-    const [pvRows] = await conn.query(
-      "SELECT id, punto_venta, letra, numero FROM puntos_venta WHERE usuario_id = ? LIMIT 1",
-      [userId]
-    );
-    if (pvRows.length === 0) {
-      return NextResponse.json({ error: "El usuario no tiene punto de venta configurado" }, { status: 400 });
-    }
-    const puntoVentaRow = pvRows[0];
-    const punto_vta = puntoVentaRow.punto_venta;
-    // Siempre usar los datos enviados por el frontend (para multi PV), pero si no vienen, tomar del usuario
-    const letraCab = letra ?? puntoVentaRow.letra;
-    const numeroCab = numero ?? (puntoVentaRow.numero + 1);
-
-    // ============================================================
-    // 2. VERIFICAR UNICIDAD DEL COMPROBANTE
-    // ============================================================
-    const [exists] = await conn.query(
-      "SELECT id FROM facturas WHERE punto_vta = ? AND letra = ? AND numero = ? LIMIT 1",
-      [punto_vta, letraCab, numeroCab]
-    );
-    if (exists.length > 0) {
-      return NextResponse.json({
-        error: "Número de comprobante ya existente, contactar soporte"
-      }, { status: 400 });
-    }
-
-    // ============================================================
-    // 3. INSERTAR CABECERA DE FACTURA
-    // ============================================================
-    // Grabar CABECERA con el totalFinal y saldo calculados por el FE
-    const [res] = await conn.execute(
-      `INSERT INTO facturas (cliente_id, fecha, numero, letra, punto_vta, total, estado, observacion, saldo)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [
-        cliente_id,
-        fecha,
-        numeroCab,
-        letraCab,
-        punto_vta,
-        Number(totalFinal), // totalFinal incluye todo (bases, ajustes, iva, impuestos)
-        estadoCalculado || "PENDIENTE",
-        observacion || null,
-        Number(saldoCalculado),
-      ]
-    );
-    const facturaId = res.insertId;
-
-    // ============================================================
-    // 4. INSERTAR DETALLE
-    // Cada línea viene ya con precio_venta, cantidad, ajuste, iva y subtotal calculado en FE
-    for (const it of detalle) {
-      const {
-        articulo_id = null,
-        descripcion = "",
-        cantidad = 1,
-        precio_venta = 0,
-        ajuste = 0,
-        iva = 21,
-        subtotal = null, 
-        centroCosto,     // subtotal debe ser el total de la línea incluido ajuste individual (IVA incluido)
-      } = it;
-      const calcSubtotal = subtotal !== null
-        ? Number(subtotal)
-        : (Number(cantidad) * Number(precio_venta)) + ((Number(cantidad) * Number(precio_venta)) * Number(ajuste)/100);
-
-      await conn.execute(
-        `INSERT INTO factura_detalle 
-          (factura_id, articulo_id, descripcion, cantidad, precio_venta, ajuste, iva, subtotal, centro_costo_id)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        [
-          facturaId,
-          articulo_id,
-          descripcion,
-          cantidad,
-          precio_venta,
-          ajuste,
-          iva,
-          calcSubtotal,
-          centroCosto
-        ]
+      return NextResponse.json(
+        { error: "Faltan datos obligatorios" },
+        { status: 400 }
       );
     }
 
-    // ============================================================
-    // 5. INSERTAR IMPUESTOS DISCRIMINADOS (factura_venta_impuestos)
-    // ============================================================
-    if (Array.isArray(impuestos) && impuestos.length > 0) {
+    const result = await prisma.$transaction(async tx => {
+      // 1️⃣ Punto de venta
+      const pv = await tx.puntos_venta.findFirst({
+        where: { usuario_id: userId },
+      });
+
+      if (!pv)
+        throw new Error("El usuario no tiene punto de venta configurado");
+
+      const punto_vta = puntoVenta ?? pv.punto_venta;
+      const letraCab = letra ?? pv.letra;
+      const numeroCab = numero ?? pv.numero + 1;
+
+      // 2️⃣ Unicidad
+      const exists = await tx.facturas.findFirst({
+        where: {
+          punto_vta,
+          letra: letraCab,
+          numero: numeroCab,
+        },
+        select: { id: true },
+      });
+
+      if (exists)
+        throw new Error("Número de comprobante ya existente");
+
+      // 3️⃣ Factura
+      const factura = await tx.facturas.create({
+        data: {
+          cliente_id,
+          fecha: new Date(fecha),
+          numero: numeroCab,
+          letra: letraCab,
+          punto_vta,
+          total: Number(totalFinal),
+          estado: estadoCalculado || "PENDIENTE",
+          observacion,
+          saldo: Number(saldoCalculado),
+        },
+      });
+
+      // 4️⃣ Detalle
+      for (const it of detalle) {
+        const subtotal =
+          it.subtotal ??
+          Number(it.cantidad) * Number(it.precio_venta) *
+            (1 + Number(it.ajuste || 0) / 100);
+
+        await tx.factura_detalle.create({
+          data: {
+            factura_id: factura.id,
+            articulo_id: it.articulo_id,
+            descripcion: it.descripcion,
+            cantidad: it.cantidad,
+            precio_venta: it.precio_venta,
+            ajuste: it.ajuste,
+            iva: it.iva,
+            subtotal,
+            centro_costo_id: it.centroCosto,
+          },
+        });
+      }
+
+      // 5️⃣ Impuestos
       for (const imp of impuestos) {
-        const {
-          impuesto_id = null,
-          codigo = null,
-          nombre = null,
-          alicuota = null,
-          base_imponible = 0,
-          monto = 0
-        } = imp;
-        await conn.execute(
-          `INSERT INTO factura_venta_impuestos 
-          (factura_id, impuesto_id, codigo, nombre, alicuota, base_imponible, monto)
-         VALUES (?, ?, ?, ?, ?, ?, ?)`,
-          [
-            facturaId,
-            impuesto_id,
-            codigo ?? null,
-            nombre ?? null,
-            alicuota ?? null,
-            Number(base_imponible),
-            Number(monto)
-          ]
-        );
+        await tx.factura_venta_impuestos.create({
+          data: {
+            factura_id: factura.id,
+            impuesto_id: imp.impuesto_id,
+            codigo: imp.codigo,
+            nombre: imp.nombre,
+            alicuota: imp.alicuota,
+            base_imponible: Number(imp.base_imponible),
+            monto: Number(imp.monto),
+          },
+        });
       }
-    }
 
-    // ============================================================
-    // 6.1 INSERTAR AJUSTES PIE (factura_ajustes_pie)
-    // ============================================================
-    if (Array.isArray(ajustesPie) && ajustesPie.length > 0) {
+      // 6️⃣ Ajustes pie
       for (const aj of ajustesPie) {
-        const {
-          nombre = null,
-          porcentaje = 0,
-          monto = 0
-        } = aj;
-        await conn.execute(
-          `INSERT INTO factura_ajustes_pie 
-          (factura_id, nombre, porcentaje, monto)
-         VALUES (?, ?, ?, ?)`,
-          [
-            facturaId,
-            nombre ?? null,
-            Number(porcentaje),
-            Number(monto)
-          ]
-        );
-      }
-    }
-
-   // ============================================================
-// 7. INSERTAR PAGOS (MISMA LÓGICA QUE API /pagos)
-// ============================================================
-let totalPagosApplied = 0;
-
-console.log("pagos")
-console.log(pagos)
-
-if (Array.isArray(pagos) && pagos.length > 0) {
-  console.log("entre pagos es array")
-  for (const p of pagos) {
-    console.log("for !")
-    const {
-      metodo,
-      monto,
-      comprobante = null,
-      banco = null,
-      lote = null,
-      cupon = null,
-      tarjeta = null,
-      fecha: fechaPago = null,
-      observacion: obsPago = null
-    } = p;
-
-    if (!metodo) continue;
-    if (!monto || Number(monto) <= 0) continue;
-
-    // 1️⃣ Insertar pago
-    const [pRes] = await conn.execute(
-      `
-      INSERT INTO pagos (
-        cliente_id,
-        factura_id,
-        metodo,
-        monto,
-        comprobante,
-        banco,
-        lote,
-        cupon,
-        tarjeta,
-        fecha,
-        observacion
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `,
-      [
-        cliente_id,
-        facturaId,
-        metodo,
-        Number(monto),
-        comprobante,
-        banco,
-        lote,
-        cupon,
-        tarjeta,
-        fechaPago ?? fecha,
-        obsPago
-      ]
-    );
-
-    const pagoId = pRes.insertId;
-
-    // 2️⃣ Aplicar pago
-    await conn.execute(
-      `
-      INSERT INTO aplicaciones_pagos (
-        pago_id,
-        factura_id,
-        monto_aplicado,
-        created_at
-      ) VALUES (?, ?, ?, NOW())
-      `,
-      [pagoId, facturaId, Number(monto)]
-    );
-
-    totalPagosApplied += Number(monto);
-
-    
-    // ⬇️ DESPUÉS de insertar pagos_compras y aplicaciones
-
-      if (
-        ["TRANSFERENCIA", "CHEQUE_PROPIO", "ECHEQ"].includes(p.metodo)
-      ) {
-        if (!p.cuenta_bancaria_id) {
-          throw new Error(
-            "Falta cuenta bancaria para movimiento bancario"
-          );
-        }
-
-        // Traemos el banco desde la cuenta bancaria
-        const [[cuenta]] = await conn.query(
-          `
-    SELECT banco_id
-    FROM cuentas_bancarias
-    WHERE id = ?
-    `,
-          [p.cuenta_bancaria_id]
-        );
-
-        if (!cuenta) {
-          throw new Error("Cuenta bancaria inexistente");
-        }
-
-        console.log(cuenta.banco_id)
-        console.log(p.fecha)
-        console.log("EGRESO")
-        console.log(Number(p.monto))
-        console.log(`Pago factura compra ${letraCab} ${punto_vta}-${numeroCab}`)
-        console.log(p.comprobante)
-        console.log(facturaId)
-
-
-        await conn.execute(
-          `
-  INSERT INTO movimientos_bancarios
-  (
-    banco_id,
-    fecha,
-    tipo,
-    monto,
-    descripcion,
-    referencia,
-    user_id
-  )
-  VALUES (?, ?, ?, ?, ?, ?, ?)
-  `,
-          [
-            cuenta.banco_id,
-            p.fecha ?? fecha,
-            "INGRESO",
-            Number(p.monto),
-            `Venta factura ${letraCab} ${punto_vta}-${numeroCab}`,
-            p.comprobante ?? null,
-            userId
-          ]
-        );
-
+        await tx.factura_ajustes_pie.create({
+          data: {
+            factura_id: factura.id,
+            nombre: aj.nombre,
+            porcentaje: Number(aj.porcentaje),
+            monto: Number(aj.monto),
+          },
+        });
       }
 
-    }
+      // 7️⃣ Pagos
+      let totalPagos = 0;
 
+      for (const p of pagos) {
+        if (!p.metodo || Number(p.monto) <= 0) continue;
 
-}
+        const pago = await tx.pagos.create({
+          data: {
+            cliente_id,
+            factura_id: factura.id,
+            metodo: p.metodo,
+            monto: Number(p.monto),
+            comprobante: p.comprobante,
+            banco: p.banco,
+            lote: p.lote,
+            cupon: p.cupon,
+            tarjeta: p.tarjeta,
+            fecha: p.fecha ? new Date(p.fecha) : new Date(fecha),
+            observacion: p.observacion,
+          },
+        });
 
- 
-// ============================================================
-// 8. ACTUALIZAR ESTADO / SALDO
-// ============================================================
-const saldoFinal = Number(totalFinal) - totalPagosApplied;
+        await tx.aplicaciones_pagos.create({
+          data: {
+            pago_id: pago.id,
+            factura_id: factura.id,
+            monto_aplicado: Number(p.monto),
+          },
+        });
 
-let estadoFinal = "PENDIENTE";
-if (saldoFinal <= 0) estadoFinal = "PAGADA";
-else if (saldoFinal < Number(totalFinal)) estadoFinal = "PARCIAL";
+        totalPagos += Number(p.monto);
 
-await conn.execute(
-  "UPDATE facturas SET saldo = ?, estado = ? WHERE id = ?",
-  [saldoFinal, estadoFinal, facturaId]
-);
+        if (
+          ["TRANSFERENCIA", "CHEQUE_PROPIO", "ECHEQ"].includes(p.metodo)
+        ) {
+          const cuenta = await tx.cuentas_bancarias.findUnique({
+            where: { id: p.cuenta_bancaria_id },
+            select: { banco_id: true },
+          });
 
+          if (!cuenta)
+            throw new Error("Cuenta bancaria inexistente");
 
-    // ============================================================
-    // 9. ACTUALIZAR NÚMERO DEL PV (SÓLO si hiciste un comprobante nuevo)
-    // ============================================================
-    await conn.execute(
-      "UPDATE puntos_venta SET numero = numero + 1 WHERE id = ?",
-      [puntoVentaRow.id]
+          await tx.movimientos_bancarios.create({
+            data: {
+              banco_id: cuenta.banco_id,
+              fecha: p.fecha ? new Date(p.fecha) : new Date(fecha),
+              tipo: "INGRESO",
+              monto: Number(p.monto),
+              descripcion: `Venta factura ${letraCab} ${punto_vta}-${numeroCab}`,
+              referencia: p.comprobante,
+              user_id: userId,
+               pago_venta_id: pago.id,
+            },
+          });
+        }
+      }
+
+      // 8️⃣ Estado final
+      const saldoFinal = Number(totalFinal) - totalPagos;
+      const estadoFinal =
+        saldoFinal <= 0
+          ? "PAGADA"
+          : saldoFinal < Number(totalFinal)
+          ? "PARCIAL"
+          : "PENDIENTE";
+
+      await tx.facturas.update({
+        where: { id: factura.id },
+        data: { saldo: saldoFinal, estado: estadoFinal },
+      });
+
+      // 9️⃣ Incrementar PV
+      await tx.puntos_venta.update({
+        where: { id: pv.id },
+        data: { numero: { increment: 1 } },
+      });
+
+      return {
+        factura,
+        estadoFinal,
+        punto_vta,
+        numeroCab,
+        letraCab,
+      };
+    });
+
+    return NextResponse.json(
+      {
+        message: "Factura creada",
+        id: result.factura.id,
+        numero: result.numeroCab,
+        punto_vta: result.punto_vta,
+        letra: result.letraCab,
+        total: Number(totalFinal),
+        estado: result.estadoFinal,
+      },
+      { status: 201 }
     );
-
-    return NextResponse.json({
-      message: "Factura creada",
-      id: facturaId,
-      numero: numeroCab,
-      punto_vta,
-      letra: letraCab,
-      total: Number(totalFinal),
-      estado: estadoFinal
-    }, { status: 201 });
-
   } catch (error) {
     console.error("POST /facturas error:", error);
-    return NextResponse.json({ error: error?.message || "Error al crear factura" }, { status: 500 });
+    return NextResponse.json(
+      { error: error.message || "Error al crear factura" },
+      { status: 500 }
+    );
   }
 }
+
+

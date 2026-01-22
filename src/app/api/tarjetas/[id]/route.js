@@ -1,9 +1,11 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "../auth/[...nextauth]/route.js";
-import { getConnection } from "@/lib/db";
+import {prisma} from "@/lib/prisma";
 
-// Obtener tarjeta
+/* =============================
+   OBTENER TARJETA
+============================= */
 export async function GET(req, { params }) {
   try {
     const session = await getServerSession(authOptions);
@@ -12,57 +14,57 @@ export async function GET(req, { params }) {
 
     const { id } = params;
 
-    const conn = await getConnection();
-    const [rows] = await conn.query(
-      "SELECT * FROM tarjetas_credito WHERE id = ?",
-      [id]
-    );
+    const tarjeta = await prisma.tarjetas_credito.findUnique({
+      where: { id: Number(id) }
+    });
 
-    if (!rows.length)
+    if (!tarjeta)
       return NextResponse.json({ error: "No encontrada" }, { status: 404 });
 
-    return NextResponse.json(rows[0]);
+    return NextResponse.json(tarjeta);
+
   } catch (error) {
     console.error("GET tarjeta:", error);
     return NextResponse.json({ error: "Error" }, { status: 500 });
   }
 }
 
-// Actualizar tarjeta
+/* =============================
+   ACTUALIZAR TARJETA
+============================= */
 export async function PUT(req, { params }) {
   try {
     const session = await getServerSession(authOptions);
     if (!session)
       return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
-    const data = await req.json();
     const { id } = params;
+    const data = await req.json();
 
-    const conn = await getConnection();
-
-    const fields = [];
-    const values = [];
-
-    for (const [k, v] of Object.entries(data)) {
-      fields.push(`${k} = ?`);
-      values.push(v);
-    }
-
-    values.push(id);
-
-    await conn.execute(
-      `UPDATE tarjetas_credito SET ${fields.join(", ")} WHERE id = ?`,
-      values
-    );
+    await prisma.tarjetas_credito.update({
+      where: { id: Number(id) },
+      data
+    });
 
     return NextResponse.json({ message: "Tarjeta actualizada" });
+
   } catch (error) {
     console.error("PUT tarjeta:", error);
+
+    if (error.code === "P2025") {
+      return NextResponse.json(
+        { error: "No encontrada" },
+        { status: 404 }
+      );
+    }
+
     return NextResponse.json({ error: "Error" }, { status: 500 });
   }
 }
 
-// Eliminar tarjeta
+/* =============================
+   ELIMINAR TARJETA
+============================= */
 export async function DELETE(req, { params }) {
   try {
     const session = await getServerSession(authOptions);
@@ -71,12 +73,22 @@ export async function DELETE(req, { params }) {
 
     const { id } = params;
 
-    const conn = await getConnection();
-    await conn.execute("DELETE FROM tarjetas_credito WHERE id = ?", [id]);
+    await prisma.tarjetas_credito.delete({
+      where: { id: Number(id) }
+    });
 
     return NextResponse.json({ message: "Tarjeta eliminada" });
+
   } catch (error) {
     console.error("DELETE tarjeta:", error);
+
+    if (error.code === "P2025") {
+      return NextResponse.json(
+        { error: "No encontrada" },
+        { status: 404 }
+      );
+    }
+
     return NextResponse.json({ error: "Error" }, { status: 500 });
   }
 }

@@ -1,18 +1,16 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "../../../../auth/[...nextauth]/route";
-import { getConnection } from "@/lib/db";
+import { prisma } from "@/lib/prisma";
 
 export async function POST(req, { params }) {
-  const conn = await getConnection();
-
   try {
     const session = await getServerSession(authOptions);
     if (!session) {
       return NextResponse.json({ error: "No autorizado" }, { status: 401 });
     }
 
-    const { id: facturaId } = await params;
+    const facturaId = Number(params.id);
 
     const {
       proveedor_id,
@@ -31,88 +29,86 @@ export async function POST(req, { params }) {
       return NextResponse.json({ error: "Monto inválido" }, { status: 400 });
     }
 
-    await conn.beginTransaction();
+    const result = await prisma.$transaction(async (tx) => {
 
-    // 1️⃣ Crear pago de compra
-    const [pagoRes] = await conn.execute(
-      `INSERT INTO pagos_compras 
-        (proveedor_id, factura_id, fecha, monto, metodo, banco, lote, cupon, tarjeta, observacion, comprobante)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [
-        proveedor_id,
-        facturaId,
-        fecha || new Date(),
-        monto,
-        metodo,
-        banco,
-        lote,
-        cupon,
-        tarjeta,
-        observacion,
-        comprobante
-      ]
-    );
+      // 1️⃣ Crear pago de compra
+      const pago = await tx.pagos_compras.create({
+        data: {
+          proveedor_id: Number(proveedor_id),
+          factura_id: facturaId,
+          fecha: fecha ? new Date(fecha) : new Date(),
+          monto: Number(monto),
+          metodo,
+          banco,
+          lote,
+          cupon,
+          tarjeta,
+          observacion,
+          comprobante
+        }
+      });
 
-    const pagoId = pagoRes.insertId;
+      // 2️⃣ Aplicar pago
+      await tx.aplicaciones_pagos_compras.create({
+        data: {
+          pago_id: pago.id,
+          factura_id: facturaId,
+          monto_aplicado: Number(monto)
+        }
+      });
 
-    // 2️⃣ Aplicar pago
-    await conn.execute(
-      `INSERT INTO aplicaciones_pagos_compras 
-        (pago_id, factura_id, monto_aplicado)
-       VALUES (?, ?, ?)`,
-      [pagoId, facturaId, monto]
-    );
+      // 3️⃣ Total factura
+      const totalFactura = await tx.factura_compra_detalle.aggregate({
+        where: { factura_id: facturaId },
+        _sum: { subtotal: true }
+      });
 
-    // 3️⃣ Total factura
-    const [[{ total_factura }]] = await conn.query(
-      `SELECT COALESCE(SUM(subtotal),0) AS total_factura
-       FROM factura_compra_detalle
-       WHERE factura_id = ?`,
-      [facturaId]
-    );
+      const total_factura = totalFactura._sum.subtotal || 0;
 
-    // 4️⃣ Total aplicado
-    const [[{ total_aplicado }]] = await conn.query(
-      `SELECT COALESCE(SUM(monto_aplicado),0) AS total_aplicado
-       FROM aplicaciones_pagos_compras
-       WHERE factura_id = ?`,
-      [facturaId]
-    );
+      // 4️⃣ Total aplicado
+      const totalAplicado = await tx.aplicaciones_pagos_compras.aggregate({
+        where: { factura_id: facturaId },
+        _sum: { monto_aplicado: true }
+      });
 
-    let estado = "PENDIENTE";
-    if (total_aplicado >= total_factura && total_factura > 0) {
-      estado = "PAGADA";
-    } else if (total_aplicado > 0) {
-      estado = "PARCIAL";
-    }
+      const total_aplicado = totalAplicado._sum.monto_aplicado || 0;
 
-    const saldo = Number(total_factura) - Number(total_aplicado);
+      // 5️⃣ Calcular estado y saldo
+      let estado = "PENDIENTE";
+      if (total_aplicado >= total_factura && total_factura > 0) {
+        estado = "PAGADA";
+      } else if (total_aplicado > 0) {
+        estado = "PARCIAL";
+      }
 
-    // 5️⃣ Actualizar factura
-    await conn.execute(
-      `UPDATE factura_compras 
-       SET estado = ?, saldo = ?
-       WHERE id = ?`,
-      [estado, saldo, facturaId]
-    );
+      const saldo = Number(total_factura) - Number(total_aplicado);
 
-    await conn.commit();
+      // 6️⃣ Actualizar factura
+      await tx.factura_compras.update({
+        where: { id: facturaId },
+        data: {
+          estado,
+          saldo
+        }
+      });
+
+      return {
+        pagoId: pago.id,
+        estado,
+        saldo
+      };
+    });
 
     return NextResponse.json({
       message: "Pago aplicado correctamente",
-      pagoId,
-      estado,
-      saldo
+      ...result
     });
 
   } catch (error) {
-    await conn.rollback();
     console.error("POST aplicar-pago compras error:", error);
     return NextResponse.json(
       { error: "Error al aplicar pago" },
       { status: 500 }
     );
-  } finally {
-    conn.release();
   }
 }

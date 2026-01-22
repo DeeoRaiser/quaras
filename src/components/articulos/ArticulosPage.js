@@ -51,7 +51,7 @@ export default function ArticuloPage() {
   const safeJson = async (res) => {
     if (!res.ok) return [];
     try {
-      return await res.json();
+      return await res.json(); 
     } catch {
       return [];
     }

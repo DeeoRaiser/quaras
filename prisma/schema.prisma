@@ -1,0 +1,537 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model aplicaciones_pagos {
+  id             Int      @id(map: "pk_aplicaciones_pagos") @default(autoincrement())
+  pago_id        Int
+  factura_id     Int
+  monto_aplicado Decimal  @db.Decimal(12, 2)
+  created_at     DateTime @default(now()) @db.Timestamp(6)
+  updated_at     DateTime @default(now()) @db.Timestamp(6)
+  trial051       String?  @db.Char(1)
+  pagos          pagos    @relation(fields: [pago_id], references: [id], onUpdate: Restrict, map: "aplicaciones_pagos_ibfk_1")
+  facturas       facturas @relation(fields: [factura_id], references: [id], onUpdate: Restrict, map: "aplicaciones_pagos_ibfk_2")
+
+  @@index([factura_id], map: "idx_factura_id")
+  @@index([pago_id], map: "idx_pago_id")
+}
+
+model aplicaciones_pagos_compras {
+  id              Int             @id(map: "pk_aplicaciones_pagos_compras") @default(autoincrement())
+  pago_id         Int
+  factura_id      Int
+  monto_aplicado  Decimal         @db.Decimal(12, 2)
+  created_at      DateTime        @default(now()) @db.Timestamp(6)
+  updated_at      DateTime        @default(now()) @db.Timestamp(6)
+  trial087        String?         @db.Char(1)
+  factura_compras factura_compras @relation(fields: [factura_id], references: [id], onDelete: Cascade, onUpdate: Restrict, map: "fk_apc_factura")
+  pagos_compras   pagos_compras   @relation(fields: [pago_id], references: [id], onDelete: Cascade, onUpdate: Restrict, map: "fk_apc_pago")
+
+  @@index([factura_id], map: "idx_apc_factura")
+  @@index([pago_id], map: "idx_apc_pago")
+}
+
+model articulos {
+  id               Int               @id(map: "pk_articulos") @default(autoincrement())
+  descripcion      String            @db.VarChar(100)
+  precio           Decimal           @db.Decimal(10, 4)
+  iva_id           Int
+  descuentos       String            @db.VarChar(150)
+  precio_neto      Decimal           @db.Decimal(10, 4)
+  utilidad         Decimal           @db.Decimal(10, 4)
+  precio_venta     Decimal           @db.Decimal(10, 4)
+  maneja_stock     String            @db.Bit(1)
+  nota             String
+  familia_id       Int
+  categoria_id     Int
+  clasificacion_id Int
+  codigo           String?           @unique(map: "idx_codigo") @db.VarChar(50)
+  centro_costo_id  Int
+  trial133         String?           @db.Char(1)
+  clasificaciones  clasificaciones   @relation(fields: [clasificacion_id], references: [id], onUpdate: Restrict, map: "articulos_ibfk_1")
+  categorias       categorias        @relation(fields: [categoria_id], references: [id], onUpdate: Restrict, map: "articulos_ibfk_2")
+  iva              iva               @relation(fields: [iva_id], references: [id], onUpdate: Restrict, map: "articulos_ibfk_3")
+  familias         familias          @relation(fields: [familia_id], references: [id], onUpdate: Restrict, map: "articulos_ibfk_4")
+  centros_costos   centros_costos    @relation(fields: [centro_costo_id], references: [id], onUpdate: Restrict, map: "articulos_ibfk_5")
+  factura_detalle  factura_detalle[]
+
+  @@index([centro_costo_id], map: "articulos_cc_fk")
+  @@index([categoria_id], map: "idx_categoria_id")
+  @@index([clasificacion_id], map: "idx_clasificacion_id")
+  @@index([familia_id, categoria_id, clasificacion_id], map: "idx_familia_id")
+  @@index([iva_id], map: "idx_iva_id")
+}
+
+model articulos_compras {
+  id                     Int                      @id(map: "pk_articulos_compras") @default(autoincrement())
+  codigo                 String?                  @db.VarChar(50)
+  descripcion            String                   @db.VarChar(255)
+  iva                    Decimal                  @default(21.00) @db.Decimal(10, 2)
+  id_centro_costo        Int                      @map("id_centro-costo")
+  created_at             DateTime                 @default(now()) @db.Timestamp(6)
+  updated_at             DateTime                 @default(now()) @db.Timestamp(6)
+  trial142               String?                  @db.Char(1)
+  centros_costos         centros_costos           @relation(fields: [id], references: [id], onUpdate: Restrict, map: "articulos_compras_ibfk_1")
+  factura_compra_detalle factura_compra_detalle[]
+  proveedor_articulos    proveedor_articulos[]
+
+  @@index([id_centro_costo], map: "idx_id_centro-costo")
+}
+
+model bancos {
+  id                Int                 @id(map: "pk_bancos") @default(autoincrement())
+  nombre            String              @db.VarChar(100)
+  sucursal          String              @db.VarChar(100)
+  nro_cuenta        String              @db.VarChar(100)
+  cbu               String              @db.VarChar(100)
+  alias             Int
+  nota              String
+  trial025          String?             @db.Char(1)
+  cuentas_bancarias cuentas_bancarias[]
+  cupones_tarjeta   cupones_tarjeta[]
+  pagos             pagos[]
+}
+
+model caja {
+  id               Int                @id(map: "pk_caja") @default(autoincrement())
+  fecha            DateTime           @db.Date
+  apertura         Decimal            @default(0.00) @db.Decimal(12, 2)
+  cierre           Decimal?           @db.Decimal(12, 2)
+  observaciones    String?
+  trial152         String?            @db.Char(1)
+  caja_movimientos caja_movimientos[]
+}
+
+model caja_movimientos {
+  id          Int      @id(map: "pk_caja_movimientos") @default(autoincrement())
+  caja_id     Int
+  fecha       DateTime @db.Timestamp(6)
+  tipo        String   @db.VarChar(7)
+  monto       Decimal  @db.Decimal(12, 2)
+  descripcion String?
+  referencia  String?  @db.VarChar(255)
+  gasto_id    Int?
+  venta_id    Int?
+  trial162    String?  @db.Char(1)
+  caja        caja     @relation(fields: [caja_id], references: [id], onUpdate: Restrict, map: "caja_movimientos_ibfk_1")
+  ventas      ventas?  @relation(fields: [venta_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "caja_movimientos_ibfk_3")
+
+  @@index([caja_id], map: "idx_caja_id")
+  @@index([gasto_id], map: "idx_gasto_id")
+  @@index([venta_id], map: "idx_venta_id")
+}
+
+model categorias {
+  id        Int         @id(map: "pk_categorias")
+  nombre    String      @db.VarChar(100)
+  trial103  String?     @db.Char(1)
+  articulos articulos[]
+}
+
+model categorias_gastos {
+  id       Int     @id(map: "pk_categorias_gastos") @default(autoincrement())
+  nombre   String  @db.VarChar(100)
+  trial172 String? @db.Char(1)
+}
+
+model centros_costos {
+  id                Int                @id(map: "pk_centros_costos") @default(autoincrement())
+  nombre            String             @db.VarChar(100)
+  descripcion       String?
+  trial123          String?            @db.Char(1)
+  articulos         articulos[]
+  articulos_compras articulos_compras?
+  factura_detalle   factura_detalle[]
+}
+
+model clasificaciones {
+  id        Int         @id(map: "pk_clasificaciones")
+  nombre    String      @db.VarChar(100)
+  trial097  String?     @db.Char(1)
+  articulos articulos[]
+}
+
+model clientes {
+  id         Int        @id(map: "pk_clientes") @default(autoincrement())
+  nombre     String     @db.VarChar(100)
+  apellido   String?    @db.VarChar(100)
+  dni        String?    @db.VarChar(20)
+  cuit       String?    @db.VarChar(20)
+  iva        String?    @db.VarChar(50)
+  iibb       String?    @db.VarChar(50)
+  numiibb    String?    @db.VarChar(50)
+  direccion  String?    @db.VarChar(255)
+  telefono   String?    @db.VarChar(50)
+  email      String?    @db.VarChar(100)
+  nota       String?
+  created_at DateTime   @default(now()) @db.Timestamp(6)
+  updated_at DateTime?  @db.Timestamp(6)
+  trial018   String?    @db.Char(1)
+  facturas   facturas[]
+  pagos      pagos[]
+}
+
+model cuentas_bancarias {
+  id                    Int                     @id(map: "pk_cuentas_bancarias") @default(autoincrement())
+  banco_id              Int
+  numero_cuenta         String?                 @db.VarChar(50)
+  tipo                  String?                 @db.VarChar(30)
+  alias_cbu             String?                 @db.VarChar(50)
+  cbu                   String?                 @db.VarChar(50)
+  trial175              String?                 @db.Char(1)
+  bancos                bancos                  @relation(fields: [banco_id], references: [id], onUpdate: Restrict, map: "cuentas_bancarias_ibfk_1")
+  movimientos_bancarios movimientos_bancarios[]
+}
+
+model cupones_tarjeta {
+  id                  Int              @id(map: "pk_cupones_tarjeta") @default(autoincrement())
+  tarjeta_id          Int
+  fecha               DateTime         @db.Date
+  monto_total         Decimal          @db.Decimal(12, 2)
+  nro_cupon           String?          @db.VarChar(50)
+  nro_lote            String?          @db.VarChar(50)
+  comision_porcentaje Decimal?         @default(0.00) @db.Decimal(5, 2)
+  comision_fija       Decimal?         @default(0.00) @db.Decimal(10, 2)
+  comision_final      Decimal          @db.Decimal(12, 2)
+  monto_acreditado    Decimal          @db.Decimal(12, 2)
+  fecha_acreditacion  DateTime?        @db.Date
+  banco_id            Int?
+  conciliado          Int?             @default(0) @db.SmallInt
+  created_at          DateTime         @default(now()) @db.Timestamp(6)
+  trial191            String?          @db.Char(1)
+  tarjetas_credito    tarjetas_credito @relation(fields: [tarjeta_id], references: [id], onUpdate: Restrict, map: "cupones_tarjeta_ibfk_1")
+  bancos              bancos?          @relation(fields: [banco_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "cupones_tarjeta_ibfk_2")
+
+  @@index([tarjeta_id], map: "idx_tarjeta_id")
+}
+
+model factura_ajustes_pie {
+  id         Int      @id(map: "pk_factura_ajustes_pie") @default(autoincrement())
+  factura_id Int
+  nombre     String   @db.VarChar(150)
+  porcentaje Decimal  @db.Decimal(10, 2)
+  monto      Decimal  @db.Decimal(12, 2)
+  trial198   String?  @db.Char(1)
+  facturas   facturas @relation(fields: [factura_id], references: [id], onUpdate: Restrict, map: "factura_ajustes_pie_ibfk_1")
+}
+
+model factura_compra_ajustes_pie {
+  id              Int             @id(map: "pk_factura_compra_ajustes_pie") @default(autoincrement())
+  factura_id      Int
+  nombre          String          @db.VarChar(150)
+  porcentaje      Decimal         @default(0.00) @db.Decimal(10, 2)
+  monto           Decimal         @default(0.00) @db.Decimal(12, 2)
+  trial204        String?         @db.Char(1)
+  factura_compras factura_compras @relation(fields: [factura_id], references: [id], onDelete: Cascade, onUpdate: Restrict, map: "fk_fcap_factura")
+
+  @@index([factura_id], map: "idx_fcap_factura")
+}
+
+model factura_compra_detalle {
+  id                Int                @id(map: "pk_factura_compra_detalle") @default(autoincrement())
+  factura_id        Int
+  articulo_id       Int?
+  descripcion       String             @db.VarChar(255)
+  cantidad          Decimal            @default(1.00) @db.Decimal(12, 2)
+  ajuste            Decimal            @default(0.00) @db.Decimal(10, 2)
+  precio_compra     Decimal            @default(0.00) @db.Decimal(12, 2)
+  iva               Decimal            @default(0.00) @db.Decimal(10, 2)
+  subtotal          Decimal            @default(0.00) @db.Decimal(12, 2)
+  centro_costo_id   Int?
+  created_at        DateTime           @default(now()) @db.Timestamp(6)
+  trial211          String?            @db.Char(1)
+  articulos_compras articulos_compras? @relation(fields: [articulo_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "factura_compra_detalle_ibfk_1")
+  factura_compras   factura_compras    @relation(fields: [factura_id], references: [id], onDelete: Cascade, onUpdate: Restrict, map: "fk_fcd_factura")
+
+  @@index([articulo_id], map: "idx_fcd_articulo")
+  @@index([factura_id], map: "idx_fcd_factura")
+}
+
+model factura_compra_impuestos {
+  id              Int             @id(map: "pk_factura_compra_impuestos") @default(autoincrement())
+  factura_id      Int
+  impuesto_id     Int?
+  nombre          String?         @db.VarChar(50)
+  codigo          String?         @db.VarChar(20)
+  alicuota        Decimal?        @db.Decimal(10, 2)
+  base_imponible  Decimal         @default(0.00) @db.Decimal(12, 2)
+  monto           Decimal         @default(0.00) @db.Decimal(12, 2)
+  trial227        String?         @db.Char(1)
+  impuestos       impuestos?      @relation(fields: [impuesto_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "factura_compra_impuestos_ibfk_1")
+  factura_compras factura_compras @relation(fields: [factura_id], references: [id], onDelete: Cascade, onUpdate: Restrict, map: "fk_fci_factura")
+
+  @@index([factura_id], map: "idx_fci_factura")
+  @@index([impuesto_id], map: "idx_impuesto_id")
+}
+
+model factura_compras {
+  id                         Int                          @id(map: "pk_factura_compras") @default(autoincrement())
+  proveedor_id               Int
+  fecha                      DateTime                     @db.Timestamp(6)
+  numero                     Int
+  letra                      String                       @db.VarChar(1)
+  punto_vta                  Int
+  total                      Decimal                      @default(0.00) @db.Decimal(12, 2)
+  estado                     String                       @default("PENDIENTE") @db.VarChar(9)
+  observacion                String?
+  saldo                      Decimal                      @default(0.00) @db.Decimal(10, 2)
+  created_at                 DateTime                     @default(now()) @db.Timestamp(6)
+  updated_at                 DateTime                     @default(now()) @db.Timestamp(6)
+  trial071                   String?                      @db.Char(1)
+  aplicaciones_pagos_compras aplicaciones_pagos_compras[]
+  factura_compra_ajustes_pie factura_compra_ajustes_pie[]
+  factura_compra_detalle     factura_compra_detalle[]
+  factura_compra_impuestos   factura_compra_impuestos[]
+  proveedores                proveedores                  @relation(fields: [proveedor_id], references: [id], onUpdate: Restrict, map: "factura_compras_ibfk_1")
+  pagos_compras              pagos_compras[]
+
+  @@index([fecha], map: "idx_factura_compras_fecha")
+  @@index([proveedor_id], map: "idx_factura_compras_proveedor")
+}
+
+model factura_detalle {
+  id              Int            @id(map: "pk_factura_detalle") @default(autoincrement())
+  factura_id      Int
+  articulo_id     Int
+  descripcion     String?        @db.VarChar(255)
+  cantidad        Decimal        @db.Decimal(12, 2)
+  ajuste          Decimal        @db.Decimal(10, 2)
+  precio_venta    Decimal        @db.Decimal(12, 2)
+  iva             Decimal        @db.Decimal(10, 2)
+  subtotal        Decimal?       @db.Decimal(12, 2)
+  created_at      DateTime       @default(now()) @db.Timestamp(6)
+  centro_costo_id Int
+  trial237        String?        @db.Char(1)
+  facturas        facturas       @relation(fields: [factura_id], references: [id], onUpdate: Restrict, map: "factura_detalle_ibfk_1")
+  articulos       articulos      @relation(fields: [articulo_id], references: [id], onUpdate: Restrict, map: "factura_detalle_ibfk_2")
+  centros_costos  centros_costos @relation(fields: [centro_costo_id], references: [id], onUpdate: Restrict, map: "fd_cc_fk")
+}
+
+model factura_venta_impuestos {
+  id             Int       @id(map: "pk_factura_venta_impuestos")
+  factura_id     Int
+  impuesto_id    Int
+  nombre         String    @db.VarChar(50)
+  codigo         String    @db.VarChar(20)
+  alicuota       String    @db.VarChar(6)
+  base_imponible Decimal   @db.Decimal(12, 2)
+  monto          Decimal   @db.Decimal(12, 2)
+  trial247       String?   @db.Char(1)
+  facturas       facturas  @relation(fields: [factura_id], references: [id], onUpdate: Restrict, map: "factura_venta_impuestos_ibfk_1")
+  impuestos      impuestos @relation(fields: [impuesto_id], references: [id], onUpdate: Restrict, map: "factura_venta_impuestos_ibfk_2")
+}
+
+model facturas {
+  id                      Int                       @id(map: "pk_facturas") @default(autoincrement())
+  cliente_id              Int
+  fecha                   DateTime                  @db.Date
+  numero                  Int
+  letra                   String                    @db.VarChar(1)
+  punto_vta               Int
+  total                   Decimal                   @db.Decimal(12, 2)
+  estado                  String?                   @default("PENDIENTE") @db.VarChar(9)
+  observacion             String?
+  created_at              DateTime                  @default(now()) @db.Timestamp(6)
+  updated_at              DateTime                  @default(now()) @db.Timestamp(6)
+  saldo                   Decimal                   @default(0.00) @db.Decimal(10, 2)
+  trial044                String?                   @db.Char(1)
+  aplicaciones_pagos      aplicaciones_pagos[]
+  factura_ajustes_pie     factura_ajustes_pie[]
+  factura_detalle         factura_detalle[]
+  factura_venta_impuestos factura_venta_impuestos[]
+  clientes                clientes                  @relation(fields: [cliente_id], references: [id], onUpdate: Restrict, map: "facturas_ibfk_1")
+}
+
+model familias {
+  id        Int         @id(map: "pk_familias")
+  nombre    String      @db.VarChar(100)
+  trial116  String?     @db.Char(1)
+  articulos articulos[]
+}
+
+model impuestos {
+  id                       Int                        @id(map: "pk_impuestos")
+  codigo                   String                     @db.VarChar(10)
+  nombre                   String                     @db.VarChar(100)
+  alicuota                 Decimal                    @db.Decimal(10, 2)
+  trial221                 String?                    @db.Char(1)
+  factura_compra_impuestos factura_compra_impuestos[]
+  factura_venta_impuestos  factura_venta_impuestos[]
+}
+
+model iva {
+  id         Int         @id(map: "pk_iva") @default(autoincrement())
+  porcentaje Decimal     @db.Decimal(10, 2)
+  trial110   String?     @db.Char(1)
+  articulos  articulos[]
+}
+
+model movimientos_bancarios {
+  id                Int               @id(map: "pk_movimientos_bancarios") @default(autoincrement())
+  banco_id          Int
+  fecha             DateTime          @db.Date
+  tipo              String            @db.VarChar(7)
+  monto             Decimal           @db.Decimal(12, 2)
+  descripcion       String?
+  referencia        String?
+  user_id           Int
+  pago_venta_id     Int?
+  pago_compra_id    Int?
+  trial260          String?           @db.Char(1)
+  cuentas_bancarias cuentas_bancarias @relation(fields: [banco_id], references: [id], onUpdate: Restrict, map: "movimientos_bancarios_ibfk_1")
+  usuarios          usuarios          @relation(fields: [user_id], references: [id], onUpdate: Restrict, map: "movimientos_bancarios_ibfk_2")
+
+  @@index([banco_id], map: "cuenta_bancaria_id")
+  @@index([user_id], map: "idx_user_id")
+}
+
+model pagos {
+  id                 Int                  @id(map: "pk_pagos") @default(autoincrement())
+  cliente_id         Int
+  fecha              DateTime             @db.Date
+  monto              Decimal              @db.Decimal(12, 4)
+  metodo             String               @db.VarChar(13)
+  banco_id           Int?
+  lote               String?              @db.VarChar(50)
+  cupon              String?              @db.VarChar(50)
+  tarjeta            String?              @db.VarChar(50)
+  observacion        String?
+  comprobante        String?              @db.VarChar(50)
+  created_at         DateTime             @default(now()) @db.Timestamp(6)
+  updated_at         DateTime             @default(now()) @db.Timestamp(6)
+  trial035           String?              @db.Char(1)
+  aplicaciones_pagos aplicaciones_pagos[]
+  clientes           clientes             @relation(fields: [cliente_id], references: [id], onUpdate: Restrict, map: "pagos_ibfk_1")
+  bancos             bancos?              @relation(fields: [banco_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "pagos_ibfk_2")
+
+  @@index([banco_id], map: "idx_banco_id")
+  @@index([cliente_id], map: "idx_cliente_id")
+}
+
+model pagos_compras {
+  id                         Int                          @id(map: "pk_pagos_compras") @default(autoincrement())
+  proveedor_id               Int
+  factura_id                 Int
+  fecha                      DateTime                     @db.Timestamp(6)
+  monto                      Decimal                      @db.Decimal(12, 2)
+  metodo                     String                       @db.VarChar(13)
+  banco                      String?                      @db.VarChar(100)
+  lote                       String?                      @db.VarChar(50)
+  cupon                      String?                      @db.VarChar(50)
+  tarjeta                    String?                      @db.VarChar(50)
+  observacion                String?
+  comprobante                String?                      @db.VarChar(100)
+  created_at                 DateTime                     @default(now()) @db.Timestamp(6)
+  updated_at                 DateTime                     @default(now()) @db.Timestamp(6)
+  trial077                   String?                      @db.Char(1)
+  aplicaciones_pagos_compras aplicaciones_pagos_compras[]
+  factura_compras            factura_compras              @relation(fields: [factura_id], references: [id], onDelete: Cascade, onUpdate: Restrict, map: "fk_pc_factura")
+
+  @@index([factura_id], map: "idx_pc_factura")
+  @@index([proveedor_id], map: "idx_pc_proveedor")
+}
+
+model proveedor_articulos {
+  id                Int               @id(map: "pk_proveedor_articulos") @default(autoincrement())
+  proveedor_id      Int
+  articulo_id       Int
+  precio_compra     Decimal?          @db.Decimal(12, 2)
+  codigo_proveedor  String?           @db.VarChar(50)
+  activo            Int?              @default(1) @db.SmallInt
+  trial266          String?           @db.Char(1)
+  proveedores       proveedores       @relation(fields: [proveedor_id], references: [id], onUpdate: Restrict, map: "proveedor_articulos_ibfk_1")
+  articulos_compras articulos_compras @relation(fields: [articulo_id], references: [id], onUpdate: Restrict, map: "proveedor_articulos_ibfk_2")
+
+  @@unique([proveedor_id, articulo_id], map: "uk_proveedor_articulo")
+  @@index([articulo_id], map: "idx_articulo_id")
+}
+
+model proveedores {
+  id                  Int                   @id(map: "pk_proveedores") @default(autoincrement())
+  nombre              String                @db.VarChar(255)
+  razonsocial         String                @db.VarChar(100)
+  iva                 String?               @db.VarChar(15)
+  iibb                String?               @db.VarChar(19)
+  numiibb             String?               @db.VarChar(14)
+  cuit                String?               @db.VarChar(11)
+  direccion           String?               @db.VarChar(255)
+  telefono            String?               @db.VarChar(50)
+  email               String?               @db.VarChar(150)
+  nota                String?
+  created_at          DateTime              @default(now()) @db.Timestamp(6)
+  updated_at          DateTime              @default(now()) @db.Timestamp(6)
+  trial061            String?               @db.Char(1)
+  factura_compras     factura_compras[]
+  proveedor_articulos proveedor_articulos[]
+}
+
+model puntos_venta {
+  id               Int      @id(map: "pk_puntos_venta") @default(autoincrement())
+  usuario_id       Int
+  nombre           String   @db.VarChar(100)
+  punto_venta      Int
+  numero           Int
+  tipo_comprobante String   @db.VarChar(7)
+  letra            String   @db.VarChar(1)
+  activo           Int?     @default(1) @db.SmallInt
+  trial276         String?  @db.Char(1)
+  usuarios         usuarios @relation(fields: [usuario_id], references: [id], onUpdate: Restrict, map: "puntos_venta_ibfk_1")
+
+  @@index([usuario_id], map: "idx_usuario_id")
+}
+
+model tarjetas_credito {
+  id                   Int                    @id(map: "pk_tarjetas_credito") @default(autoincrement())
+  nombre               String                 @db.VarChar(100)
+  entidad              String?                @db.VarChar(100)
+  tipo                 String?                @default("credito") @db.VarChar(7)
+  comision_porcentaje  Decimal?               @default(0.00) @db.Decimal(5, 2)
+  comision_fija        Decimal?               @default(0.00) @db.Decimal(10, 2)
+  nota                 String?
+  created_at           DateTime               @default(now()) @db.Timestamp(6)
+  trial185             String?                @db.Char(1)
+  cupones_tarjeta      cupones_tarjeta[]
+  tarjetas_movimientos tarjetas_movimientos[]
+}
+
+model tarjetas_movimientos {
+  id               Int              @id(map: "pk_tarjetas_movimientos") @default(autoincrement())
+  tarjeta_id       Int
+  fecha            DateTime         @db.Date
+  monto            Decimal          @db.Decimal(12, 2)
+  descripcion      String?
+  lote             String?          @db.VarChar(50)
+  cuota            Int?             @default(1)
+  trial286         String?          @db.Char(1)
+  tarjetas_credito tarjetas_credito @relation(fields: [tarjeta_id], references: [id], onUpdate: Restrict, map: "tarjetas_movimientos_ibfk_1")
+}
+
+model usuarios {
+  id                    Int                     @id(map: "pk_usuarios") @default(autoincrement())
+  nombre                String?                 @db.VarChar(100)
+  apellido              String                  @db.VarChar(100)
+  usuario               String?                 @db.VarChar(100)
+  password              String?                 @db.VarChar(255)
+  access                String?                 @db.VarChar(500)
+  punto_venta_id        Int?
+  trial250              String?                 @db.Char(1)
+  movimientos_bancarios movimientos_bancarios[]
+  puntos_venta          puntos_venta[]
+
+  @@index([punto_venta_id], map: "idx_punto_venta_id")
+}
+
+model ventas {
+  id               Int                @id(map: "pk_ventas") @default(autoincrement())
+  fecha            DateTime           @db.Date
+  total            Decimal            @db.Decimal(12, 2)
+  observaciones    String?
+  trial159         String?            @db.Char(1)
+  caja_movimientos caja_movimientos[]
+}

@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Servidor: 127.0.0.1
--- Tiempo de generación: 18-01-2026 a las 23:54:31
+-- Tiempo de generación: 21-01-2026 a las 22:53:49
 -- Versión del servidor: 10.4.32-MariaDB
 -- Versión de PHP: 8.2.12
 
@@ -41,8 +41,7 @@ CREATE TABLE `aplicaciones_pagos` (
 --
 
 INSERT INTO `aplicaciones_pagos` (`id`, `pago_id`, `factura_id`, `monto_aplicado`, `created_at`, `updated_at`) VALUES
-(7, 25, 58, 8.00, '2026-01-18 14:50:33', '2026-01-18 14:50:33'),
-(8, 25, 57, 492.00, '2026-01-18 14:50:33', '2026-01-18 14:50:33');
+(34, 41, 69, 5000.00, '2026-01-19 20:16:39', '2026-01-19 20:16:39');
 
 -- --------------------------------------------------------
 
@@ -58,16 +57,6 @@ CREATE TABLE `aplicaciones_pagos_compras` (
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
---
--- Volcado de datos para la tabla `aplicaciones_pagos_compras`
---
-
-INSERT INTO `aplicaciones_pagos_compras` (`id`, `pago_id`, `factura_id`, `monto_aplicado`, `created_at`, `updated_at`) VALUES
-(13, 13, 13, 5000.00, '2026-01-08 17:52:13', '2026-01-08 17:52:13'),
-(14, 14, 13, 15000.00, '2026-01-08 17:52:13', '2026-01-08 17:52:13'),
-(15, 15, 14, 5000.00, '2026-01-08 17:52:54', '2026-01-08 17:52:54'),
-(16, 16, 14, 15000.00, '2026-01-08 17:52:54', '2026-01-08 17:52:54');
 
 -- --------------------------------------------------------
 
@@ -98,8 +87,9 @@ CREATE TABLE `articulos` (
 --
 
 INSERT INTO `articulos` (`id`, `descripcion`, `precio`, `iva_id`, `descuentos`, `precio_neto`, `utilidad`, `precio_venta`, `maneja_stock`, `nota`, `familia_id`, `categoria_id`, `clasificacion_id`, `codigo`, `centro_costo_id`) VALUES
-(6, 'CUMPLEAÑOS', 500.0000, 1, '', 500.0000, 30.0000, 500.0000, 0.0000, '', 1, 1, 1, NULL, 1),
-(8, 'TREKING', 1.0000, 1, '[\"-10\"]', 2.0000, 3.0000, 4.0000, 0.0000, 'nota', 1, 1, 1, NULL, 4);
+(6, 'CUMPLEAÑOS', 500.0000, 1, '', 500.0000, 30.0000, 5000.0000, 0.0000, '', 1, 1, 1, NULL, 1),
+(8, 'TREKING', 1.0000, 1, '[\"-10\"]', 2.0000, 3.0000, 4000.0000, 0.0000, 'nota', 1, 1, 1, NULL, 4),
+(12, 'JUBILADOS12', 100.0000, 1, '-10,-20', 500.0000, 150.0000, 15000.0000, 0.0000, 'FSDFSDFSDF', 1, 2, 1, NULL, 3);
 
 -- --------------------------------------------------------
 
@@ -111,7 +101,8 @@ CREATE TABLE `articulos_compras` (
   `id` int(11) NOT NULL,
   `codigo` varchar(50) DEFAULT NULL,
   `descripcion` varchar(255) NOT NULL,
-  `iva` decimal(5,2) NOT NULL DEFAULT 21.00,
+  `iva` decimal(10,2) NOT NULL DEFAULT 21.00,
+  `id_centro-costo` int(11) NOT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
@@ -120,13 +111,13 @@ CREATE TABLE `articulos_compras` (
 -- Volcado de datos para la tabla `articulos_compras`
 --
 
-INSERT INTO `articulos_compras` (`id`, `codigo`, `descripcion`, `iva`, `created_at`, `updated_at`) VALUES
-(1, 'A-100', 'Resma A4 80g', 21.00, '2026-01-01 15:33:14', '2026-01-01 15:33:14'),
-(2, 'A-101', 'Tóner HP 85A', 21.00, '2026-01-01 15:33:14', '2026-01-01 15:33:14'),
-(3, 'A-102', 'Lapicera Azul Bic', 21.00, '2026-01-01 15:33:14', '2026-01-01 15:33:14'),
-(4, 'B-200', 'Caja de Guantes Nitrilo', 21.00, '2026-01-01 15:33:14', '2026-01-01 15:33:14'),
-(5, 'B-201', 'Alcohol Etílico 1L', 21.00, '2026-01-01 15:33:14', '2026-01-01 15:33:14'),
-(6, 'B-202', 'Barbijo Tricapa', 21.00, '2026-01-01 15:33:14', '2026-01-01 15:33:14');
+INSERT INTO `articulos_compras` (`id`, `codigo`, `descripcion`, `iva`, `id_centro-costo`, `created_at`, `updated_at`) VALUES
+(1, 'A-100', 'Resma A4 80g', 21.00, 1, '2026-01-01 15:33:14', '2026-01-20 20:09:41'),
+(2, 'A-101', 'Tóner HP 85A', 21.00, 1, '2026-01-01 15:33:14', '2026-01-20 20:09:43'),
+(3, 'A-102', 'Lapicera Azul Bic', 21.00, 1, '2026-01-01 15:33:14', '2026-01-20 20:09:44'),
+(4, 'B-200', 'Caja de Guantes Nitrilo', 21.00, 1, '2026-01-01 15:33:14', '2026-01-20 20:09:46'),
+(5, 'B-201', 'Alcohol Etílico 1L', 21.00, 1, '2026-01-01 15:33:14', '2026-01-20 20:09:47'),
+(6, 'B-202', 'Barbijo Tricapa', 21.00, 1, '2026-01-01 15:33:14', '2026-01-20 20:09:49');
 
 -- --------------------------------------------------------
 
@@ -295,34 +286,6 @@ INSERT INTO `clientes` (`id`, `nombre`, `apellido`, `dni`, `cuit`, `iva`, `iibb`
 -- --------------------------------------------------------
 
 --
--- Estructura de tabla para la tabla `conciliaciones_bancarias`
---
-
-CREATE TABLE `conciliaciones_bancarias` (
-  `id` int(11) NOT NULL,
-  `cuenta_bancaria_id` int(11) NOT NULL,
-  `fecha_conciliacion` date NOT NULL,
-  `saldo_segun_banco` decimal(12,2) DEFAULT NULL,
-  `saldo_segun_sistema` decimal(12,2) DEFAULT NULL,
-  `diferencia` decimal(12,2) DEFAULT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
--- --------------------------------------------------------
-
---
--- Estructura de tabla para la tabla `conciliaciones_detalle`
---
-
-CREATE TABLE `conciliaciones_detalle` (
-  `id` int(11) NOT NULL,
-  `conciliacion_id` int(11) NOT NULL,
-  `mov_banco_id` int(11) NOT NULL,
-  `estado` enum('CONCILIADO','PENDIENTE','ERROR') NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
--- --------------------------------------------------------
-
---
 -- Estructura de tabla para la tabla `cuentas_bancarias`
 --
 
@@ -391,9 +354,8 @@ CREATE TABLE `facturas` (
 --
 
 INSERT INTO `facturas` (`id`, `cliente_id`, `fecha`, `numero`, `letra`, `punto_vta`, `total`, `estado`, `observacion`, `created_at`, `updated_at`, `saldo`) VALUES
-(56, 2, '2025-12-26', '11', 'B', 1, 500.00, 'PENDIENTE', NULL, '2025-12-26 18:58:14', '2025-12-26 18:58:14', 500.00),
-(57, 2, '2026-01-02', '12', 'B', 1, 500.00, 'PENDIENTE', NULL, '2026-01-02 16:32:41', '2026-01-02 16:34:43', 500.00),
-(58, 2, '2026-01-17', '101', 'B', 1, 8.00, 'PENDIENTE', NULL, '2026-01-17 19:33:34', '2026-01-17 19:33:34', 8.00);
+(69, 1, '2026-01-19', '11', 'B', 1, 5000.00, 'PAGADA', NULL, '2026-01-19 20:16:39', '2026-01-19 20:16:39', 0.00),
+(70, 2, '2026-01-19', '63', 'A', 1, 5000.00, 'PENDIENTE', NULL, '2026-01-19 21:49:00', '2026-01-19 21:49:00', 5000.00);
 
 -- --------------------------------------------------------
 
@@ -419,7 +381,7 @@ CREATE TABLE `factura_compras` (
   `id` int(11) NOT NULL,
   `proveedor_id` int(11) NOT NULL,
   `fecha` datetime NOT NULL,
-  `numero` varchar(30) NOT NULL,
+  `numero` int(11) NOT NULL,
   `letra` varchar(1) NOT NULL,
   `punto_vta` int(11) NOT NULL,
   `total` decimal(12,2) NOT NULL DEFAULT 0.00,
@@ -435,8 +397,11 @@ CREATE TABLE `factura_compras` (
 --
 
 INSERT INTO `factura_compras` (`id`, `proveedor_id`, `fecha`, `numero`, `letra`, `punto_vta`, `total`, `estado`, `observacion`, `saldo`, `created_at`, `updated_at`) VALUES
-(13, 5, '2026-01-08 14:50:47', '10000', 'A', 55, 20000.00, 'PENDIENTE', NULL, 20000.00, '2026-01-08 17:52:13', '2026-01-08 17:52:13'),
-(14, 5, '2026-01-08 14:50:47', '10001', 'A', 55, 20000.00, 'PAGADA', NULL, 0.00, '2026-01-08 17:52:54', '2026-01-08 17:52:54');
+(25, 5, '2026-01-20 20:06:10', 2, 'A', 1, 1301.22, 'PENDIENTE', NULL, 1301.22, '2026-01-20 23:11:31', '2026-01-20 23:11:31'),
+(28, 4, '2026-01-20 20:50:19', 1, '1', 10, 4167.83, 'PENDIENTE', NULL, 4167.83, '2026-01-20 23:56:05', '2026-01-20 23:56:05'),
+(29, 5, '2026-01-20 18:21:30', 1121212, 'a', 1234, 1938.00, 'PENDIENTE', NULL, 1938.00, '2026-01-20 21:21:44', '2026-01-20 21:21:44'),
+(30, 5, '2026-01-21 18:25:49', 11111, 'a', 10, 51.50, 'PENDIENTE', NULL, 51.50, '2026-01-21 21:52:30', '2026-01-21 21:52:30'),
+(31, 5, '2026-01-21 18:25:49', 1111, 'a', 10, 51.50, 'PENDIENTE', NULL, 51.50, '2026-01-21 21:53:35', '2026-01-21 21:53:35');
 
 -- --------------------------------------------------------
 
@@ -451,6 +416,14 @@ CREATE TABLE `factura_compra_ajustes_pie` (
   `porcentaje` decimal(10,2) NOT NULL DEFAULT 0.00,
   `monto` decimal(12,2) NOT NULL DEFAULT 0.00
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Volcado de datos para la tabla `factura_compra_ajustes_pie`
+--
+
+INSERT INTO `factura_compra_ajustes_pie` (`id`, `factura_id`, `nombre`, `porcentaje`, `monto`) VALUES
+(3, 25, 'dto 1', -10.00, 0.00),
+(4, 25, 'dto2 ', -2.00, 0.00);
 
 -- --------------------------------------------------------
 
@@ -477,8 +450,17 @@ CREATE TABLE `factura_compra_detalle` (
 --
 
 INSERT INTO `factura_compra_detalle` (`id`, `factura_id`, `articulo_id`, `descripcion`, `cantidad`, `ajuste`, `precio_compra`, `iva`, `subtotal`, `centro_costo_id`, `created_at`) VALUES
-(13, 13, NULL, 'Alcohol Etílico 1L', 10.00, 0.00, 2000.00, 21.00, 0.00, NULL, '2026-01-08 17:52:13'),
-(14, 14, NULL, 'Alcohol Etílico 1L', 10.00, 0.00, 2000.00, 21.00, 0.00, NULL, '2026-01-08 17:52:54');
+(37, 25, NULL, 'Caja de Guantes Nitrilo', 1.00, 1.00, 100.00, 1.00, 0.00, NULL, '2026-01-20 23:11:31'),
+(38, 25, NULL, 'Alcohol Etílico 1L', 2.00, 2.00, 200.00, 1.00, 0.00, NULL, '2026-01-20 23:11:31'),
+(39, 25, NULL, 'Barbijo Tricapa', 3.00, 3.00, 300.00, 1.00, 0.00, NULL, '2026-01-20 23:11:31'),
+(40, 28, NULL, 'Resma A4 80g', 1.00, -1.00, 1500.55, 21.00, 0.00, NULL, '2026-01-20 23:56:05'),
+(41, 28, NULL, 'Tóner HP 85A', 2.00, -2.00, 1200.00, 21.00, 0.00, NULL, '2026-01-20 23:56:05'),
+(42, 28, NULL, 'Lapicera Azul Bic', 3.00, -3.00, 113.50, 21.00, 0.00, NULL, '2026-01-20 23:56:05'),
+(43, 29, NULL, 'Alcohol Etílico 1L', 1.00, 2.00, 1900.00, 21.00, 0.00, NULL, '2026-01-20 21:21:44'),
+(44, 30, NULL, 'Alcohol Etílico 1L', 4.00, 5.00, 10.00, 21.00, 0.00, NULL, '2026-01-21 21:52:30'),
+(45, 30, NULL, 'Barbijo Tricapa', 1.00, -5.00, 10.00, 21.00, 0.00, NULL, '2026-01-21 21:52:30'),
+(46, 31, NULL, 'Alcohol Etílico 1L', 4.00, 5.00, 10.00, 21.00, 42.00, NULL, '2026-01-21 21:53:35'),
+(47, 31, NULL, 'Barbijo Tricapa', 1.00, -5.00, 10.00, 21.00, 9.50, NULL, '2026-01-21 21:53:35');
 
 -- --------------------------------------------------------
 
@@ -492,10 +474,17 @@ CREATE TABLE `factura_compra_impuestos` (
   `impuesto_id` int(11) DEFAULT NULL,
   `nombre` varchar(50) DEFAULT NULL,
   `codigo` varchar(20) DEFAULT NULL,
-  `alicuota` varchar(6) DEFAULT NULL,
+  `alicuota` decimal(10,2) DEFAULT NULL,
   `base_imponible` decimal(12,2) NOT NULL DEFAULT 0.00,
   `monto` decimal(12,2) NOT NULL DEFAULT 0.00
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Volcado de datos para la tabla `factura_compra_impuestos`
+--
+
+INSERT INTO `factura_compra_impuestos` (`id`, `factura_id`, `impuesto_id`, `nombre`, `codigo`, `alicuota`, `base_imponible`, `monto`) VALUES
+(4, 25, 0, 'IIBB CBA 3%', 'IIBBCBA3', 3.00, 1251.17, 37.54);
 
 -- --------------------------------------------------------
 
@@ -522,9 +511,8 @@ CREATE TABLE `factura_detalle` (
 --
 
 INSERT INTO `factura_detalle` (`id`, `factura_id`, `articulo_id`, `descripcion`, `cantidad`, `ajuste`, `precio_venta`, `iva`, `created_at`, `centro_costo_id`) VALUES
-(100, 56, 6, 'CUMPLEAÑOS', 1.00, 0.00, 500.00, 21.00, '2025-12-26 18:58:14', 1),
-(101, 57, 6, 'CUMPLEAÑOS', 1.00, 0.00, 500.00, 21.00, '2026-01-02 16:32:41', 1),
-(102, 58, 8, 'TREKING', 1.00, 0.00, 8.00, 21.00, '2026-01-17 19:33:34', 4);
+(114, 69, 6, 'CUMPLEAÑOS', 1.00, 0.00, 5000.00, 21.00, '2026-01-19 20:16:39', 1),
+(115, 70, 6, 'CUMPLEAÑOS', 1.00, 0.00, 5000.00, 21.00, '2026-01-19 21:49:00', 1);
 
 -- --------------------------------------------------------
 
@@ -615,15 +603,17 @@ CREATE TABLE `movimientos_bancarios` (
   `monto` decimal(12,2) NOT NULL,
   `descripcion` text DEFAULT NULL,
   `referencia` text DEFAULT NULL,
-  `user_id` int(11) NOT NULL
+  `user_id` int(11) NOT NULL,
+  `pago_venta_id` int(11) DEFAULT NULL,
+  `pago_compra_id` int(11) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Volcado de datos para la tabla `movimientos_bancarios`
 --
 
-INSERT INTO `movimientos_bancarios` (`id`, `banco_id`, `fecha`, `tipo`, `monto`, `descripcion`, `referencia`, `user_id`) VALUES
-(9, 1, '2026-01-08', 'EGRESO', 15000.00, 'Pago factura compra A 55-10001', '5555', 2);
+INSERT INTO `movimientos_bancarios` (`id`, `banco_id`, `fecha`, `tipo`, `monto`, `descripcion`, `referencia`, `user_id`, `pago_venta_id`, `pago_compra_id`) VALUES
+(20, 1, '2026-01-19', 'INGRESO', 5000.00, 'Venta factura B 1-11', '121212', 2, NULL, NULL);
 
 -- --------------------------------------------------------
 
@@ -637,7 +627,7 @@ CREATE TABLE `pagos` (
   `fecha` date NOT NULL,
   `monto` decimal(12,4) NOT NULL,
   `metodo` enum('EFECTIVO','TARJETA','TRANSFERENCIA') NOT NULL,
-  `banco` varchar(60) DEFAULT NULL,
+  `banco_id` int(11) DEFAULT NULL,
   `lote` varchar(50) DEFAULT NULL,
   `cupon` varchar(50) DEFAULT NULL,
   `tarjeta` varchar(50) DEFAULT NULL,
@@ -651,10 +641,8 @@ CREATE TABLE `pagos` (
 -- Volcado de datos para la tabla `pagos`
 --
 
-INSERT INTO `pagos` (`id`, `cliente_id`, `fecha`, `monto`, `metodo`, `banco`, `lote`, `cupon`, `tarjeta`, `observacion`, `comprobante`, `created_at`, `updated_at`) VALUES
-(22, 2, '2025-12-09', 10000.0000, 'EFECTIVO', '', '', '', '', '', '', '2025-12-19 19:48:18', '2025-12-19 19:48:18'),
-(23, 2, '2025-12-09', 10000.0000, 'EFECTIVO', '', '', '', '', '', '', '2025-12-19 19:52:25', '2025-12-19 19:52:25'),
-(25, 2, '2026-01-18', 500.0000, 'EFECTIVO', NULL, NULL, NULL, NULL, '', NULL, '2026-01-18 14:50:33', '2026-01-18 14:50:33');
+INSERT INTO `pagos` (`id`, `cliente_id`, `fecha`, `monto`, `metodo`, `banco_id`, `lote`, `cupon`, `tarjeta`, `observacion`, `comprobante`, `created_at`, `updated_at`) VALUES
+(41, 1, '2026-01-19', 5000.0000, 'TRANSFERENCIA', 1, '', '', '', '', '121212', '2026-01-19 20:16:39', '2026-01-21 21:33:29');
 
 -- --------------------------------------------------------
 
@@ -678,16 +666,6 @@ CREATE TABLE `pagos_compras` (
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
---
--- Volcado de datos para la tabla `pagos_compras`
---
-
-INSERT INTO `pagos_compras` (`id`, `proveedor_id`, `factura_id`, `fecha`, `monto`, `metodo`, `banco`, `lote`, `cupon`, `tarjeta`, `observacion`, `comprobante`, `created_at`, `updated_at`) VALUES
-(13, 5, 13, '2026-01-08 00:00:00', 5000.00, 'EFECTIVO', '', '', '', '', '', '', '2026-01-08 17:52:13', '2026-01-08 17:52:13'),
-(14, 5, 13, '2026-01-08 00:00:00', 15000.00, 'TRANSFERENCIA', '', '', '', '', '', '5555', '2026-01-08 17:52:13', '2026-01-08 17:52:13'),
-(15, 5, 14, '2026-01-08 00:00:00', 5000.00, 'EFECTIVO', '', '', '', '', '', '', '2026-01-08 17:52:54', '2026-01-08 17:52:54'),
-(16, 5, 14, '2026-01-08 00:00:00', 15000.00, 'TRANSFERENCIA', '', '', '', '', '', '5555', '2026-01-08 17:52:54', '2026-01-08 17:52:54');
 
 -- --------------------------------------------------------
 
@@ -716,8 +694,8 @@ CREATE TABLE `proveedores` (
 --
 
 INSERT INTO `proveedores` (`id`, `nombre`, `razonsocial`, `iva`, `iibb`, `numiibb`, `cuit`, `direccion`, `telefono`, `email`, `nota`, `created_at`, `updated_at`) VALUES
-(4, 'Proveedor 1', 'Proveedor 1', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2025-11-22 14:28:40', '2026-01-01 15:31:13'),
-(5, 'Proveedor 2', 'Proveedor 2', 'Monotributista', 'Inscripto', NULL, NULL, NULL, NULL, NULL, NULL, '2025-11-22 14:28:40', '2025-11-22 14:28:40');
+(4, 'Proveedor 1', 'Proveedor 1', NULL, NULL, NULL, '22222222', NULL, NULL, NULL, NULL, '2025-11-22 14:28:40', '2026-01-21 15:51:01'),
+(5, 'Proveedor 2', 'Proveedor 2', 'Monotributista', 'Inscripto', NULL, '111111111', NULL, NULL, NULL, NULL, '2025-11-22 14:28:40', '2026-01-21 15:50:58');
 
 -- --------------------------------------------------------
 
@@ -768,7 +746,7 @@ CREATE TABLE `puntos_venta` (
 --
 
 INSERT INTO `puntos_venta` (`id`, `usuario_id`, `nombre`, `punto_venta`, `numero`, `tipo_comprobante`, `letra`, `activo`) VALUES
-(1, 2, 'FACTURA A', 1, 51, 'FACTURA', 'A', 1),
+(1, 2, 'FACTURA A', 1, 69, 'FACTURA', 'A', 1),
 (2, 2, 'FACTURA B', 1, 10, 'FACTURA', 'B', 1),
 (3, 2, 'FACTURA PV 2', 2, 100, 'FACTURA', 'B', 1);
 
@@ -826,7 +804,7 @@ CREATE TABLE `usuarios` (
 --
 
 INSERT INTO `usuarios` (`id`, `nombre`, `apellido`, `usuario`, `password`, `access`, `punto_venta_id`) VALUES
-(2, 'admin', 'admin', 'admin', '$2b$10$ylvqB5R5qAatwYP3r.SNTeS6i5GW8Ya6rNSstF7iJVLq6kmjCKNEC', 'proveedores,listado-bancos, conceptos-bancarios,clientes,articulos,movimientos-bancarios,clientes-cuentas-corrientes, ordenes-de-pago-clientes', NULL);
+(2, 'admin', 'admin', 'admin', '$2b$10$ylvqB5R5qAatwYP3r.SNTeS6i5GW8Ya6rNSstF7iJVLq6kmjCKNEC', 'proveedores,listado-bancos, conceptos-bancarios,clientes,articulos,movimientos-bancarios,ordenes-de-pago-clientes,clientes-cuentas-corrientes', NULL);
 
 -- --------------------------------------------------------
 
@@ -867,13 +845,18 @@ ALTER TABLE `aplicaciones_pagos_compras`
 ALTER TABLE `articulos`
   ADD PRIMARY KEY (`id`),
   ADD UNIQUE KEY `codigo` (`codigo`),
-  ADD KEY `articulos_cc_fk` (`centro_costo_id`);
+  ADD KEY `articulos_cc_fk` (`centro_costo_id`),
+  ADD KEY `iva_id` (`iva_id`),
+  ADD KEY `familia_id` (`familia_id`,`categoria_id`,`clasificacion_id`),
+  ADD KEY `clasificacion_id` (`clasificacion_id`),
+  ADD KEY `categoria_id` (`categoria_id`);
 
 --
 -- Indices de la tabla `articulos_compras`
 --
 ALTER TABLE `articulos_compras`
-  ADD PRIMARY KEY (`id`);
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `id_centro-costo` (`id_centro-costo`);
 
 --
 -- Indices de la tabla `bancos`
@@ -925,21 +908,6 @@ ALTER TABLE `clasificaciones`
 --
 ALTER TABLE `clientes`
   ADD PRIMARY KEY (`id`);
-
---
--- Indices de la tabla `conciliaciones_bancarias`
---
-ALTER TABLE `conciliaciones_bancarias`
-  ADD PRIMARY KEY (`id`),
-  ADD KEY `cuenta_bancaria_id` (`cuenta_bancaria_id`);
-
---
--- Indices de la tabla `conciliaciones_detalle`
---
-ALTER TABLE `conciliaciones_detalle`
-  ADD PRIMARY KEY (`id`),
-  ADD KEY `conciliacion_id` (`conciliacion_id`),
-  ADD KEY `mov_banco_id` (`mov_banco_id`);
 
 --
 -- Indices de la tabla `cuentas_bancarias`
@@ -998,7 +966,8 @@ ALTER TABLE `factura_compra_detalle`
 --
 ALTER TABLE `factura_compra_impuestos`
   ADD PRIMARY KEY (`id`),
-  ADD KEY `idx_fci_factura` (`factura_id`);
+  ADD KEY `idx_fci_factura` (`factura_id`),
+  ADD KEY `impuesto_id` (`impuesto_id`);
 
 --
 -- Indices de la tabla `factura_detalle`
@@ -1048,13 +1017,15 @@ ALTER TABLE `movimientos_bancarios`
 --
 ALTER TABLE `pagos`
   ADD PRIMARY KEY (`id`),
-  ADD KEY `cliente_id` (`cliente_id`);
+  ADD KEY `cliente_id` (`cliente_id`),
+  ADD KEY `banco_id` (`banco_id`);
 
 --
 -- Indices de la tabla `pagos_compras`
 --
 ALTER TABLE `pagos_compras`
   ADD PRIMARY KEY (`id`),
+  ADD KEY `idx_pc_factura` (`factura_id`),
   ADD KEY `idx_pc_proveedor` (`proveedor_id`);
 
 --
@@ -1112,19 +1083,19 @@ ALTER TABLE `ventas`
 -- AUTO_INCREMENT de la tabla `aplicaciones_pagos`
 --
 ALTER TABLE `aplicaciones_pagos`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=9;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=35;
 
 --
 -- AUTO_INCREMENT de la tabla `aplicaciones_pagos_compras`
 --
 ALTER TABLE `aplicaciones_pagos_compras`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=17;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=18;
 
 --
 -- AUTO_INCREMENT de la tabla `articulos`
 --
 ALTER TABLE `articulos`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=9;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=13;
 
 --
 -- AUTO_INCREMENT de la tabla `articulos_compras`
@@ -1169,18 +1140,6 @@ ALTER TABLE `clientes`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
 
 --
--- AUTO_INCREMENT de la tabla `conciliaciones_bancarias`
---
-ALTER TABLE `conciliaciones_bancarias`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
-
---
--- AUTO_INCREMENT de la tabla `conciliaciones_detalle`
---
-ALTER TABLE `conciliaciones_detalle`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
-
---
 -- AUTO_INCREMENT de la tabla `cuentas_bancarias`
 --
 ALTER TABLE `cuentas_bancarias`
@@ -1196,7 +1155,7 @@ ALTER TABLE `cupones_tarjeta`
 -- AUTO_INCREMENT de la tabla `facturas`
 --
 ALTER TABLE `facturas`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=59;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=71;
 
 --
 -- AUTO_INCREMENT de la tabla `factura_ajustes_pie`
@@ -1208,31 +1167,31 @@ ALTER TABLE `factura_ajustes_pie`
 -- AUTO_INCREMENT de la tabla `factura_compras`
 --
 ALTER TABLE `factura_compras`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=15;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=32;
 
 --
 -- AUTO_INCREMENT de la tabla `factura_compra_ajustes_pie`
 --
 ALTER TABLE `factura_compra_ajustes_pie`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
 
 --
 -- AUTO_INCREMENT de la tabla `factura_compra_detalle`
 --
 ALTER TABLE `factura_compra_detalle`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=15;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=48;
 
 --
 -- AUTO_INCREMENT de la tabla `factura_compra_impuestos`
 --
 ALTER TABLE `factura_compra_impuestos`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
 
 --
 -- AUTO_INCREMENT de la tabla `factura_detalle`
 --
 ALTER TABLE `factura_detalle`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=103;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=116;
 
 --
 -- AUTO_INCREMENT de la tabla `iva`
@@ -1244,19 +1203,19 @@ ALTER TABLE `iva`
 -- AUTO_INCREMENT de la tabla `movimientos_bancarios`
 --
 ALTER TABLE `movimientos_bancarios`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=10;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=21;
 
 --
 -- AUTO_INCREMENT de la tabla `pagos`
 --
 ALTER TABLE `pagos`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=26;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=42;
 
 --
 -- AUTO_INCREMENT de la tabla `pagos_compras`
 --
 ALTER TABLE `pagos_compras`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=17;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=18;
 
 --
 -- AUTO_INCREMENT de la tabla `proveedores`
@@ -1322,7 +1281,17 @@ ALTER TABLE `aplicaciones_pagos_compras`
 -- Filtros para la tabla `articulos`
 --
 ALTER TABLE `articulos`
-  ADD CONSTRAINT `articulos_cc_fk` FOREIGN KEY (`centro_costo_id`) REFERENCES `centros_costos` (`id`);
+  ADD CONSTRAINT `articulos_ibfk_1` FOREIGN KEY (`clasificacion_id`) REFERENCES `clasificaciones` (`id`),
+  ADD CONSTRAINT `articulos_ibfk_2` FOREIGN KEY (`categoria_id`) REFERENCES `categorias` (`id`),
+  ADD CONSTRAINT `articulos_ibfk_3` FOREIGN KEY (`iva_id`) REFERENCES `iva` (`id`),
+  ADD CONSTRAINT `articulos_ibfk_4` FOREIGN KEY (`familia_id`) REFERENCES `familias` (`id`),
+  ADD CONSTRAINT `articulos_ibfk_5` FOREIGN KEY (`centro_costo_id`) REFERENCES `centros_costos` (`id`);
+
+--
+-- Filtros para la tabla `articulos_compras`
+--
+ALTER TABLE `articulos_compras`
+  ADD CONSTRAINT `articulos_compras_ibfk_1` FOREIGN KEY (`id`) REFERENCES `centros_costos` (`id`);
 
 --
 -- Filtros para la tabla `caja_movimientos`
@@ -1330,19 +1299,6 @@ ALTER TABLE `articulos`
 ALTER TABLE `caja_movimientos`
   ADD CONSTRAINT `caja_movimientos_ibfk_1` FOREIGN KEY (`caja_id`) REFERENCES `caja` (`id`),
   ADD CONSTRAINT `caja_movimientos_ibfk_3` FOREIGN KEY (`venta_id`) REFERENCES `ventas` (`id`);
-
---
--- Filtros para la tabla `conciliaciones_bancarias`
---
-ALTER TABLE `conciliaciones_bancarias`
-  ADD CONSTRAINT `conciliaciones_bancarias_ibfk_1` FOREIGN KEY (`cuenta_bancaria_id`) REFERENCES `cuentas_bancarias` (`id`);
-
---
--- Filtros para la tabla `conciliaciones_detalle`
---
-ALTER TABLE `conciliaciones_detalle`
-  ADD CONSTRAINT `conciliaciones_detalle_ibfk_1` FOREIGN KEY (`conciliacion_id`) REFERENCES `conciliaciones_bancarias` (`id`),
-  ADD CONSTRAINT `conciliaciones_detalle_ibfk_2` FOREIGN KEY (`mov_banco_id`) REFERENCES `movimientos_bancarios` (`id`);
 
 --
 -- Filtros para la tabla `cuentas_bancarias`
@@ -1370,6 +1326,12 @@ ALTER TABLE `factura_ajustes_pie`
   ADD CONSTRAINT `factura_ajustes_pie_ibfk_1` FOREIGN KEY (`factura_id`) REFERENCES `facturas` (`id`);
 
 --
+-- Filtros para la tabla `factura_compras`
+--
+ALTER TABLE `factura_compras`
+  ADD CONSTRAINT `factura_compras_ibfk_1` FOREIGN KEY (`proveedor_id`) REFERENCES `proveedores` (`id`);
+
+--
 -- Filtros para la tabla `factura_compra_ajustes_pie`
 --
 ALTER TABLE `factura_compra_ajustes_pie`
@@ -1379,12 +1341,14 @@ ALTER TABLE `factura_compra_ajustes_pie`
 -- Filtros para la tabla `factura_compra_detalle`
 --
 ALTER TABLE `factura_compra_detalle`
+  ADD CONSTRAINT `factura_compra_detalle_ibfk_1` FOREIGN KEY (`articulo_id`) REFERENCES `articulos_compras` (`id`),
   ADD CONSTRAINT `fk_fcd_factura` FOREIGN KEY (`factura_id`) REFERENCES `factura_compras` (`id`) ON DELETE CASCADE;
 
 --
 -- Filtros para la tabla `factura_compra_impuestos`
 --
 ALTER TABLE `factura_compra_impuestos`
+  ADD CONSTRAINT `factura_compra_impuestos_ibfk_1` FOREIGN KEY (`impuesto_id`) REFERENCES `impuestos` (`id`),
   ADD CONSTRAINT `fk_fci_factura` FOREIGN KEY (`factura_id`) REFERENCES `factura_compras` (`id`) ON DELETE CASCADE;
 
 --
@@ -1413,7 +1377,8 @@ ALTER TABLE `movimientos_bancarios`
 -- Filtros para la tabla `pagos`
 --
 ALTER TABLE `pagos`
-  ADD CONSTRAINT `pagos_ibfk_1` FOREIGN KEY (`cliente_id`) REFERENCES `clientes` (`id`);
+  ADD CONSTRAINT `pagos_ibfk_1` FOREIGN KEY (`cliente_id`) REFERENCES `clientes` (`id`),
+  ADD CONSTRAINT `pagos_ibfk_2` FOREIGN KEY (`banco_id`) REFERENCES `bancos` (`id`);
 
 --
 -- Filtros para la tabla `pagos_compras`

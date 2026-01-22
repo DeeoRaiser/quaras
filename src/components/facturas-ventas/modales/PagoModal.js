@@ -125,42 +125,52 @@ export default function PagoModal({
     return true;
   };
 
-  const guardar = async () => {
+const guardar = async () => {
+  if (!validar()) return;
 
-    console.log(factura)
-
-    if (!validar()) return;
-
-    const payload = {
-      ...form,
-      monto: Number(form.monto)
-    };
-
-    if (modo === "BORRADOR") {
-      onConfirmar(payload);
-      return;
-    }
-
-    const res = await fetch("/api/pagos/add", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        factura: factura.id,
-        aplicaciones: factura,
-        cliente_id: factura.cliente_id,
-        cliente_nombre: factura.cliente_nombre,
-        ...payload
-      })
-    });
-
-    if (!res.ok) {
-      alert("Error al guardar el pago");
-      return;
-    }
-
-    onGuardado?.();
-    onClose();
+  const payload = {
+    cliente_id: factura.cliente_id,
+    metodo: form.metodo,
+    monto: Number(form.monto),
+    fecha: form.fecha,
+    observacion: form.observacion || "",
+    cuenta_bancaria_id:
+      form.metodo === "TRANSFERENCIA"
+        ? Number(form.cuenta_bancaria_id)
+        : null,
+    comprobante: form.comprobante || null,
+    tipo_movimiento: "INGRESO",
+    aplicaciones: [
+      {
+        factura_id: factura.id,
+        monto: Number(form.monto),
+        punto_vta: factura.punto_vta,
+        numero: factura.numero,
+        letra: factura.letra
+      }
+    ]
   };
+
+  if (modo === "BORRADOR") {
+    onConfirmar(payload);
+    return;
+  }
+
+  const res = await fetch("/api/clientes/pagos/add", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload)
+  });
+
+  if (!res.ok) {
+    alert("Error al guardar el pago");
+    return;
+  }
+
+  onGuardado?.();
+  onClose();
+};
+
 
   const nroCompleto = factura
     ? `${String(factura.punto_vta).padStart(4, "0")}-${String(

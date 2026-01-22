@@ -1,7 +1,7 @@
 import { getServerSession } from "next-auth";
 import { authOptions } from "../auth/[...nextauth]/route.js";
 import { NextResponse } from "next/server";
-import { getConnection } from "@/lib/db";
+import {prisma} from "@/lib/prisma";
 
 
 // -----------------------------------------------------
@@ -10,20 +10,32 @@ import { getConnection } from "@/lib/db";
 export async function GET() {
   try {
     const session = await getServerSession(authOptions);
-    if (!session) {
+    if (!session)
       return NextResponse.json({ error: "No autorizado" }, { status: 401 });
-    }
 
-    const conn = await getConnection();
-    const [rows] = await conn.query(`
-      SELECT cg.*, cc.nombre AS centro_costo
-      FROM categorias_gastos cg
-      INNER JOIN centros_costo cc ON cc.id = cg.centro_costo_id
-      WHERE cg.estado = 1
-      ORDER BY cg.id DESC
-    `);
+    const categorias = await prisma.categoriaGasto.findMany({
+      where: {
+        estado: 1
+      },
+      include: {
+        centroCosto: {
+          select: {
+            nombre: true
+          }
+        }
+      },
+      orderBy: {
+        id: "desc"
+      }
+    });
 
-    return NextResponse.json(rows);
+    // Mantiene la estructura original del SELECT
+    const result = categorias.map(c => ({
+      ...c,
+      centro_costo: c.centroCosto.nombre
+    }));
+
+    return NextResponse.json(result);
   } catch (error) {
     console.error(error);
     return NextResponse.json(
@@ -34,19 +46,16 @@ export async function GET() {
 }
 
 
-
 // -----------------------------------------------------
 // POST: Crear categoría
 // -----------------------------------------------------
 export async function POST(req) {
   try {
     const session = await getServerSession(authOptions);
-    if (!session) {
+    if (!session)
       return NextResponse.json({ error: "No autorizado" }, { status: 401 });
-    }
 
-    const data = await req.json();
-    const { nombre, descripcion, centro_costo_id, tipo, iva } = data;
+    const { nombre, descripcion, centro_costo_id, tipo, iva } = await req.json();
 
     if (!nombre || !centro_costo_id) {
       return NextResponse.json(
@@ -55,21 +64,15 @@ export async function POST(req) {
       );
     }
 
-    const conn = await getConnection();
-
-    const query = `
-      INSERT INTO categorias_gastos 
-        (nombre, descripcion, centro_costo_id, tipo, iva)
-      VALUES (?, ?, ?, ?, ?)
-    `;
-
-    await conn.execute(query, [
-      nombre,
-      descripcion ?? null,
-      centro_costo_id,
-      tipo ?? "general",
-      iva ?? 21.00,
-    ]);
+    await prisma.categoriaGasto.create({
+      data: {
+        nombre,
+        descripcion: descripcion ?? null,
+        tipo: tipo ?? "general",
+        iva: iva ?? 21.00,
+        centroCostoId: Number(centro_costo_id)
+      }
+    });
 
     return NextResponse.json(
       { message: "Categoría creada correctamente" },
@@ -85,16 +88,14 @@ export async function POST(req) {
 }
 
 
-
 // -----------------------------------------------------
 // PUT: Actualizar categoría
 // -----------------------------------------------------
 export async function PUT(req) {
   try {
     const session = await getServerSession(authOptions);
-    if (!session) {
+    if (!session)
       return NextResponse.json({ error: "No autorizado" }, { status: 401 });
-    }
 
     const { searchParams } = new URL(req.url);
     const id = searchParams.get("id");
@@ -106,36 +107,26 @@ export async function PUT(req) {
       );
     }
 
-    const data = await req.json();
-    const { nombre, descripcion, centro_costo_id, tipo, iva, estado } = data;
+    const { nombre, descripcion, centro_costo_id, tipo, iva, estado } =
+      await req.json();
 
-    const conn = await getConnection();
+    await prisma.categoriaGasto.update({
+      where: {
+        id: Number(id)
+      },
+      data: {
+        nombre,
+        descripcion: descripcion ?? null,
+        tipo: tipo ?? "general",
+        iva: iva ?? 21.00,
+        estado: estado ?? 1,
+        centroCostoId: Number(centro_costo_id)
+      }
+    });
 
-    const query = `
-      UPDATE categorias_gastos
-      SET 
-        nombre = ?, 
-        descripcion = ?, 
-        centro_costo_id = ?, 
-        tipo = ?, 
-        iva = ?, 
-        estado = ?
-      WHERE id = ?
-    `;
-
-    await conn.execute(query, [
-      nombre,
-      descripcion ?? null,
-      centro_costo_id,
-      tipo ?? "general",
-      iva ?? 21.00,
-      estado ?? 1,
-      id,
-    ]);
-
-    return NextResponse.json(
-      { message: "Categoría actualizada correctamente" }
-    );
+    return NextResponse.json({
+      message: "Categoría actualizada correctamente"
+    });
   } catch (error) {
     console.error(error);
     return NextResponse.json(
@@ -146,16 +137,14 @@ export async function PUT(req) {
 }
 
 
-
 // -----------------------------------------------------
 // DELETE: Borrado lógico (estado = 0)
 // -----------------------------------------------------
 export async function DELETE(req) {
   try {
     const session = await getServerSession(authOptions);
-    if (!session) {
+    if (!session)
       return NextResponse.json({ error: "No autorizado" }, { status: 401 });
-    }
 
     const { searchParams } = new URL(req.url);
     const id = searchParams.get("id");
@@ -167,17 +156,18 @@ export async function DELETE(req) {
       );
     }
 
-    const conn = await getConnection();
-
-    await conn.execute(
-      `UPDATE categorias_gastos SET estado = 0 WHERE id = ?`,
-      [id]
-    );
-
-    return NextResponse.json({
-      message: "Categoría eliminada correctamente (borrado lógico)",
+    await prisma.categoriaGasto.update({
+      where: {
+        id: Number(id)
+      },
+      data: {
+        estado: 0
+      }
     });
 
+    return NextResponse.json({
+      message: "Categoría eliminada correctamente (borrado lógico)"
+    });
   } catch (error) {
     console.error(error);
     return NextResponse.json(

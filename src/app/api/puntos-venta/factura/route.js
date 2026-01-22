@@ -1,9 +1,7 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
-
-import { getConnection } from "@/lib/db";
-
+import {prisma} from "@/lib/prisma";
 
 export async function GET(req) {
   try {
@@ -15,37 +13,53 @@ export async function GET(req) {
     const userId = session.user.id;
     const { searchParams } = new URL(req.url);
 
-    // opcionales
-    const tipo = searchParams.get("tipo");      // 'FACTURA' o 'NC' (opcional)
-    const activoParam = searchParams.get("activo"); // '1' or '0' (opcional)
+    // filtros opcionales
+    const tipo = searchParams.get("tipo");        // 'FACTURA' | 'NC'
+    const activoParam = searchParams.get("activo"); // '1' | '0'
 
-    // build query dinámico con params seguros
-    let sql = `SELECT id, usuario_id, nombre, punto_venta, numero, tipo_comprobante, letra, activo
-               FROM puntos_venta
-               WHERE usuario_id = ?`;
-    const params = [userId];
+    /* =============================
+       WHERE DINÁMICO
+    ============================= */
+    const where = {
+      usuario_id: userId
+    };
 
     if (tipo) {
-      sql += ` AND tipo_comprobante = ?`;
-      params.push(tipo);
+      where.tipo_comprobante = tipo;
     }
 
     if (activoParam !== null) {
-      sql += ` AND activo = ?`;
-      params.push(Number(activoParam) ? 1 : 0);
+      where.activo = Boolean(Number(activoParam));
     }
 
-    // ordenar por punto_venta y letra para que el frontend lo recorra fácil
-    sql += ` ORDER BY punto_venta, letra`;
+    /* =============================
+       QUERY
+    ============================= */
+    const puntosVenta = await prisma.puntos_venta.findMany({
+      where,
+      select: {
+        id: true,
+        usuario_id: true,
+        nombre: true,
+        punto_venta: true,
+        numero: true,
+        tipo_comprobante: true,
+        letra: true,
+        activo: true
+      },
+      orderBy: [
+        { punto_venta: "asc" },
+        { letra: "asc" }
+      ]
+    });
 
-    const conn = await getConnection();
-    const [rows] = await conn.query(sql, params);
+    return NextResponse.json(puntosVenta, { status: 200 });
 
-    // devolvemos todas las filas tal cual (cada combinación punto_venta + letra estará)
-    return NextResponse.json(rows, { status: 200 });
   } catch (err) {
     console.error("GET /puntos-venta error:", err);
-    return NextResponse.json({ error: "Error al obtener puntos de venta" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Error al obtener puntos de venta" },
+      { status: 500 }
+    );
   }
 }
-

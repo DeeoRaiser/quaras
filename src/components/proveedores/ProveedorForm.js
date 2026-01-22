@@ -11,6 +11,12 @@ import {
 } from "@mui/material";
 import CrudFormDialog from "../common/CrudFormDialog";
 
+
+import NotesIcon from '@mui/icons-material/Notes';
+import ContactsIcon from '@mui/icons-material/Contacts';
+import StorefrontIcon from '@mui/icons-material/Storefront';
+import EditIcon from '@mui/icons-material/Edit';
+
 export default function ProveedorForm({
   open,
   onClose,
@@ -50,13 +56,13 @@ export default function ProveedorForm({
       open={open}
       onClose={onClose}
       onSubmit={onSubmit}
-      title={isEdit ? "Editar Proveedor" : "Nuevo Proveedor"}
+      title={isEdit ? "Editar Proveedor": "Nuevo Proveedor"}
     >
       {/* Tabs Header */}
       <Tabs value={tab} onChange={(e, v) => setTab(v)} sx={{ mb: 2 }}>
-        <Tab label="Impositivo" />
-        <Tab label="Contacto" />
-        <Tab label="Nota" />
+        <Tab label="Impositivo" icon=<StorefrontIcon/> />
+        <Tab label="Contacto" icon=<ContactsIcon/> />
+        <Tab label="Nota" icon=<NotesIcon/>/>
       </Tabs>
 
       {/* ================= TAB 1: IMPOSITIVO ================= */}

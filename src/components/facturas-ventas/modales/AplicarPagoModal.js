@@ -123,7 +123,7 @@ export default function AplicarPagoModal({
                 alert("Ingrese el comprobante");
                 return false;
             }
-        }
+        } 
 
         return true;
     };
@@ -142,10 +142,9 @@ export default function AplicarPagoModal({
             monto: Number(pago.monto),
             fecha: pago.fecha,
             observacion: pago.observacion,
-            cuenta_bancaria_id:
-                pago.metodo !== "EFECTIVO" ? pago.cuenta_bancaria_id : null,
+            cuenta_bancaria_id: pago.cuenta_bancaria_id,
             comprobante: pago.comprobante,
-            tipo_movimiento: pago.metodo !== "EFECTIVO" ? "CREDITO" : null,
+            tipo_movimiento: "INGRESO",
             aplicaciones: aplicaciones
                 .filter(a => a.monto_aplicado > 0)
                 .map(a => ({
@@ -157,14 +156,15 @@ export default function AplicarPagoModal({
                 }))
         };
 
-        
+        console.log("body")
+        console.log(body)
 
-        const res = await fetch("/api/pagos/add", {
+
+
+        const res = await fetch("/api/clientes/pagos/add", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(body)
-
-            
         });
 
         if (!res.ok) {
@@ -190,8 +190,16 @@ export default function AplicarPagoModal({
 
 
                 {/* DATOS PAGO */}
-                <Grid container spacing={2} mb={3}>
-                    <Grid item xs={3}>
+                <Box
+                    sx={{
+                        display: "flex",
+                        flexWrap: "wrap",
+                        gap: 2,
+                        mb: 3,
+                    }}
+                >
+                    {/* Fecha */}
+                    <Box sx={{ flex: "0 0 25%" }}>
                         <TextField
                             label="Fecha"
                             type="date"
@@ -204,20 +212,23 @@ export default function AplicarPagoModal({
                                 inputLabel: { shrink: true }
                             }}
                         />
-                    </Grid>
+                    </Box>
 
-                    <Grid item xs={3}>
+                    {/* Monto */}
+                    <Box sx={{ flex: "0 0 25%" }}>
                         <TextField
-                            type="date"
+                            label="Monto"
+                            type="text"
                             fullWidth
-                            value={pago.fecha}
+                            value={pago.monto}
                             onChange={e =>
-                                setPago(prev => ({ ...prev, fecha: e.target.value }))
+                                setPago(prev => ({ ...prev, monto: e.target.value }))
                             }
                         />
-                    </Grid>
+                    </Box>
 
-                    <Grid item xs={6}>
+                    {/* Método */}
+                    <Box sx={{ flex: "0 0 30%" }}>
                         <TextField
                             select
                             fullWidth
@@ -237,27 +248,25 @@ export default function AplicarPagoModal({
                             <MenuItem value="CHEQUE">Cheque</MenuItem>
                             <MenuItem value="ECHEQ">eCheq</MenuItem>
                         </TextField>
-                    </Grid>
+                    </Box>
 
-                    <Grid item xs={12}>
-                        <TextField
-                            label="Observación"
-                            fullWidth
-                            multiline
-                            minRows={2}
-                            value={pago.observacion}
-                            onChange={e =>
-                                setPago(prev => ({ ...prev, observacion: e.target.value }))
-                            }
-                        />
-                    </Grid>
-                </Grid>
+                    {/* Observación */}
+
+                </Box>
 
 
-                {pago.metodo !== "EFECTIVO" && (
+
+                {pago.metodo == "TRANSFERENCIA" && (
                     <Paper sx={{ p: 2, mb: 3, bgcolor: "#F0FAF6" }}>
-                        <Grid container spacing={2}>
-                            <Grid item xs={12}>
+                        <Box
+                            sx={{
+                                display: "flex",
+                                flexWrap: "wrap",
+                                gap: 2,
+                            }}
+                        >
+                            {/* Cuenta bancaria */}
+                            <Box sx={{ flex: "0 0 53%" }}>
                                 <TextField
                                     select
                                     fullWidth
@@ -277,9 +286,10 @@ export default function AplicarPagoModal({
                                         </MenuItem>
                                     ))}
                                 </TextField>
-                            </Grid>
+                            </Box>
 
-                            <Grid item xs={12}>
+                            {/* Comprobante */}
+                            <Box sx={{ flex: "0 0 45%" }}>
                                 <TextField
                                     label="Comprobante"
                                     fullWidth
@@ -291,12 +301,24 @@ export default function AplicarPagoModal({
                                         }))
                                     }
                                 />
-                            </Grid>
-                        </Grid>
+                            </Box>
+                        </Box>
+
                     </Paper>
                 )}
 
-
+                <Box sx={{ flex: "0 0 100%" }}>
+                    <TextField
+                        label="Observación"
+                        fullWidth
+                        multiline
+                        minRows={2}
+                        value={pago.observacion}
+                        onChange={e =>
+                            setPago(prev => ({ ...prev, observacion: e.target.value }))
+                        }
+                    />
+                </Box>
 
 
 

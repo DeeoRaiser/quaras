@@ -17,6 +17,7 @@
     "@mui/x-data-grid": "^8.19.0",
     "@mui/x-date-pickers": "^8.19.0",
     "@mui/x-tree-view": "^8.11.1",
+    "@prisma/client": "^6.19.2",
     "bcrypt": "^6.0.0",
     "dayjs": "^1.11.19",
     "mysql2": "^3.14.4",
@@ -32,6 +33,7 @@
     "baseline-browser-mapping": "^2.9.3",
     "eslint": "^9",
     "eslint-config-next": "15.5.2",
+    "prisma": "^6.19.2",
     "tailwindcss": "^4"
   }
 }

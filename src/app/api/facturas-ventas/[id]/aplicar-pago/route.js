@@ -1,52 +1,101 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "../../../../auth/[...nextauth]/route";
-import { getConnection } from "@/lib/db";
+import {prisma} from "@/lib/prisma";
 
 export async function POST(req, { params }) {
   try {
     const session = await getServerSession(authOptions);
-    if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+    if (!session) {
+      return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+    }
 
-     const { id: facturaId } = await params;
-    const { cliente_id = null, fecha = null, forma_pago = null, monto = 0, observacion = null } = await req.json();
+    const facturaId = Number(params.id);
+
+    const {
+      cliente_id = null,
+      fecha = null,
+      forma_pago = null,
+      monto = 0,
+      observacion = null,
+    } = await req.json();
 
     if (!monto || Number(monto) <= 0) {
       return NextResponse.json({ error: "Monto inválido" }, { status: 400 });
     }
 
-    const conn = await getConnection();
+    /* ==========================================
+       1️⃣ CREAR PAGO
+    ========================================== */
+    const pago = await prisma.pagos.create({
+      data: {
+        cliente_id,
+        fecha: fecha ? new Date(fecha) : new Date(),
+        forma_pago,
+        total: Number(monto),
+        observacion,
+      },
+    });
 
-    // crear pago
-    const [pRes] = await conn.execute(
-      `INSERT INTO pagos (cliente_id, fecha, forma_pago, total, observacion) VALUES (?, ?, ?, ?, ?)`,
-      [cliente_id, fecha || new Date().toISOString().slice(0,10), forma_pago, monto, observacion]
-    );
-    const pagoId = pRes.insertId;
+    /* ==========================================
+       2️⃣ APLICAR PAGO A FACTURA
+    ========================================== */
+    await prisma.aplicaciones_pagos.create({
+      data: {
+        pago_id: pago.id,
+        factura_id: facturaId,
+        monto_aplicado: Number(monto),
+      },
+    });
 
-    // aplicar pago a factura
-    await conn.execute(
-      `INSERT INTO aplicaciones_pagos (pago_id, factura_id, monto_aplicado) VALUES (?, ?, ?)`,
-      [pagoId, facturaId, monto]
-    );
+    /* ==========================================
+       3️⃣ RECALCULAR TOTAL FACTURA
+    ========================================== */
+    const totalFacturaAgg = await prisma.factura_detalle.aggregate({
+      where: { factura_id: facturaId },
+      _sum: { subtotal: true },
+    });
 
-    // recalcular sumas y estado factura
-    const [sumSub] = await conn.query("SELECT COALESCE(SUM(subtotal),0) AS total_factura FROM factura_detalle WHERE factura_id = ?", [facturaId]);
-    const totalFactura = Number(sumSub[0].total_factura);
+    const totalFactura = Number(totalFacturaAgg._sum.subtotal || 0);
 
-    const [sumApps] = await conn.query("SELECT COALESCE(SUM(monto_aplicado),0) AS total_aplicado FROM aplicaciones_pagos WHERE factura_id = ?", [facturaId]);
-    const totalAplicado = Number(sumApps[0].total_aplicado);
+    /* ==========================================
+       4️⃣ RECALCULAR TOTAL APLICADO
+    ========================================== */
+    const totalAplicadoAgg = await prisma.aplicaciones_pagos.aggregate({
+      where: { factura_id: facturaId },
+      _sum: { monto_aplicado: true },
+    });
 
+    const totalAplicado = Number(totalAplicadoAgg._sum.monto_aplicado || 0);
+
+    /* ==========================================
+       5️⃣ CALCULAR NUEVO ESTADO
+    ========================================== */
     let nuevoEstado = "PENDIENTE";
-    if (totalAplicado <= 0) nuevoEstado = "PENDIENTE";
-    else if (totalAplicado >= totalFactura) nuevoEstado = "PAGADA";
-    else nuevoEstado = "PARCIAL";
+    if (totalAplicado >= totalFactura && totalFactura > 0) {
+      nuevoEstado = "PAGADA";
+    } else if (totalAplicado > 0) {
+      nuevoEstado = "PARCIAL";
+    }
 
-    await conn.execute("UPDATE facturas SET estado = ? WHERE id = ?", [nuevoEstado, facturaId]);
+    /* ==========================================
+       6️⃣ ACTUALIZAR FACTURA
+    ========================================== */
+    await prisma.facturas.update({
+      where: { id: facturaId },
+      data: { estado: nuevoEstado },
+    });
 
-    return NextResponse.json({ message: "Pago aplicado", pagoId, nuevoEstado });
+    return NextResponse.json({
+      message: "Pago aplicado",
+      pagoId: pago.id,
+      nuevoEstado,
+    });
   } catch (error) {
     console.error("POST aplicar-pago error:", error);
-    return NextResponse.json({ error: "Error al aplicar pago" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Error al aplicar pago" },
+      { status: 500 }
+    );
   }
 }

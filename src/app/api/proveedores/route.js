@@ -1,17 +1,19 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "../auth/[...nextauth]/route.js";
-import { getConnection } from "@/lib/db";
+import {prisma} from "@/lib/prisma";
 
-// ➤ Crear proveedor
+/* =============================
+   ➤ CREAR PROVEEDOR
+============================= */
 export async function POST(req) {
   try {
     const session = await getServerSession(authOptions);
-    if (!session) {
+    if (!session)
       return NextResponse.json({ error: "No autorizado" }, { status: 401 });
-    }
 
     const data = await req.json();
+
     const {
       nombre,
       razonsocial,
@@ -25,29 +27,20 @@ export async function POST(req) {
       nota
     } = data;
 
-    console.log(data)
-
-    const conn = await getConnection();
-    const query = `
-      INSERT INTO proveedores 
-      (nombre, razonsocial, iva,
-      iibb, numiibb, cuit, direccion, 
-      telefono, email, nota) 
-      VALUES (?,?,?,?,?,?,?,?,?,?)
-    `;
-
-    await conn.execute(query, [
-  nombre || null,
-  razonsocial || null,
-  iva || null,
-  iibb || null,
-  numiibb || null,
-  cuit || null,
-  direccion || null,
-  telefono || null,
-  email || null,
-  nota || null
-]);
+    await prisma.proveedores.create({
+      data: {
+        nombre: nombre ?? null,
+        razonsocial: razonsocial ?? null,
+        iva: iva ?? null,
+        iibb: iibb ?? null,
+        numiibb: numiibb ?? null,
+        cuit: cuit ?? null,
+        direccion: direccion ?? null,
+        telefono: telefono ?? null,
+        email: email ?? null,
+        nota: nota ?? null
+      }
+    });
 
     return NextResponse.json(
       { message: "Proveedor creado correctamente" },
@@ -55,7 +48,7 @@ export async function POST(req) {
     );
 
   } catch (error) {
-    console.error(error);
+    console.error("POST proveedor error:", error);
     return NextResponse.json(
       { error: "Error al crear proveedor" },
       { status: 500 }
@@ -63,24 +56,23 @@ export async function POST(req) {
   }
 }
 
-
-// ➤ Obtener lista de proveedores
+/* =============================
+   ➤ LISTAR PROVEEDORES
+============================= */
 export async function GET() {
   try {
     const session = await getServerSession(authOptions);
-    if (!session) {
+    if (!session)
       return NextResponse.json({ error: "No autorizado" }, { status: 401 });
-    }
 
-    const conn = await getConnection();
-    const [rows] = await conn.query(
-      "SELECT * FROM proveedores ORDER BY id DESC"
-    );
+    const proveedores = await prisma.proveedores.findMany({
+      orderBy: { id: "desc" }
+    });
 
-    return NextResponse.json(rows);
+    return NextResponse.json(proveedores);
 
   } catch (error) {
-    console.error(error);
+    console.error("GET proveedores error:", error);
     return NextResponse.json(
       { error: "Error al obtener los proveedores" },
       { status: 500 }

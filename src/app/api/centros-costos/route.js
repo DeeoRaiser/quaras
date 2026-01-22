@@ -1,15 +1,17 @@
 import { getServerSession } from "next-auth";
 import { authOptions } from "../auth/[...nextauth]/route.js";
 import { NextResponse } from "next/server";
-import { getConnection } from "@/lib/db";
+import {prisma} from "@/lib/prisma";
 
-// Crear centro de costo
+
+// -----------------------------------------------------
+// POST: Crear centro de costo
+// -----------------------------------------------------
 export async function POST(req) {
   try {
     const session = await getServerSession(authOptions);
-    if (!session) {
+    if (!session)
       return NextResponse.json({ error: "No autorizado" }, { status: 401 });
-    }
 
     const { nombre, descripcion } = await req.json();
 
@@ -20,14 +22,12 @@ export async function POST(req) {
       );
     }
 
-    const conn = await getConnection();
-
-    const sql = `
-      INSERT INTO centros_costo (nombre, descripcion)
-      VALUES (?, ?)
-    `;
-
-    await conn.execute(sql, [nombre, descripcion || null]);
+    await prisma.centros_costos.create({
+      data: {
+        nombre,
+        descripcion: descripcion ?? null
+      }
+    });
 
     return NextResponse.json(
       { message: "Centro de costo creado correctamente" },
@@ -42,20 +42,23 @@ export async function POST(req) {
   }
 }
 
-// Listar centros de costo
+
+// -----------------------------------------------------
+// GET: Listar centros de costo
+// -----------------------------------------------------
 export async function GET() {
   try {
     const session = await getServerSession(authOptions);
-    if (!session) {
+    if (!session)
       return NextResponse.json({ error: "No autorizado" }, { status: 401 });
-    }
 
-    const conn = await getConnection();
-    const [rows] = await conn.query(
-      "SELECT * FROM centros_costos ORDER BY id DESC"
-    );
+    const centros = await prisma.centros_costos.findMany({
+      orderBy: {
+        id: "desc"
+      }
+    });
 
-    return NextResponse.json(rows, { status: 200 });
+    return NextResponse.json(centros, { status: 200 });
   } catch (error) {
     console.error("Error GET /centros-costo:", error);
     return NextResponse.json(

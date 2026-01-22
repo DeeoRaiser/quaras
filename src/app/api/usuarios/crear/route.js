@@ -1,39 +1,49 @@
 import { NextResponse } from "next/server";
 import bcrypt from "bcrypt";
-import { getConnection } from "@/lib/db";
+import {prisma} from "@/lib/prisma";
 
 export async function POST(req) {
   try {
-   const { nombre, apellido, usuario, password } = await req.json();
-    const conn = await getConnection();
+    const { nombre, apellido, usuario, password } = await req.json();
 
-    // Verificar que el usuario no exista
-    const [existing] = await conn.execute(
-      "SELECT id FROM usuarios WHERE usuario = ?",
-      [usuario]
-    );
+    if (!usuario || !password) {
+      return NextResponse.json(
+        { error: "Usuario y contraseña son obligatorios" },
+        { status: 400 }
+      );
+    }
 
-    if (existing.length > 0) {
+    // 1️⃣ Verificar si el usuario ya existe
+    const existingUser = await prisma.usuarios.findUnique({
+      where: { usuario }
+    });
+
+    if (existingUser) {
       return NextResponse.json(
         { error: "El usuario ya existe" },
         { status: 400 }
       );
     }
 
+    // 2️⃣ Encriptar contraseña
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // Insertar en la DB
-    await conn.execute(
-  "INSERT INTO usuarios (nombre, apellido, usuario, password) VALUES (?, ?, ?, ?)",
-  [nombre, apellido, usuario, hashedPassword]
-);
+    // 3️⃣ Crear usuario
+    await prisma.usuarios.create({
+      data: {
+        nombre: nombre || null,
+        apellido: apellido || null,
+        usuario,
+        password: hashedPassword
+      }
+    });
 
     return NextResponse.json({
-      message: "Usuario creado correctamente",
-      password,
-    });
+      message: "Usuario creado correctamente"
+    }, { status: 201 });
+
   } catch (error) {
-    console.error(error);
+    console.error("POST /usuarios error:", error);
     return NextResponse.json(
       { error: "Error al crear usuario" },
       { status: 500 }

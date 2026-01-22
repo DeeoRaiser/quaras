@@ -29,7 +29,6 @@ export default function ModalFactura({
     const saldoPendiente = Number(factura.totalFactura) - totalPagado;
 
 
-
     const [tab, setTab] = useState(0);
 
     const handleTabChange = (event, newValue) => {
@@ -180,6 +179,9 @@ export default function ModalFactura({
                         </TableBody>
                     </Table>
                 )} */}
+
+
+
 
                 <Tabs
                     value={tab}

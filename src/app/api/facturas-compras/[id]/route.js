@@ -1,190 +1,125 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "../../auth/[...nextauth]/route";
-import { getConnection } from "@/lib/db";
+import { prisma } from "@/lib/prisma";
 
 /* =========================
    OBTENER FACTURA COMPRA
 ========================= */
-export async function GET(req, { params }) {
+export async function GET(req, context) {
   try {
     const session = await getServerSession(authOptions);
     if (!session) {
       return NextResponse.json({ error: "No autorizado" }, { status: 401 });
     }
 
-    const { id } = await params;
-    const conn = await getConnection();
+    // ✅ Next.js 14+: params es una promesa
+    const params = await context.params;
+    const facturaId = Number(params.id);
 
-    /* ===== Cabecera ===== */
-    const [[factura]] = await conn.query(
-      `
-      SELECT fc.*,
-             p.nombre AS proveedor_nombre,
-             p.cuit AS proveedor_cuit
-      FROM factura_compras fc
-      LEFT JOIN proveedores p ON p.id = fc.proveedor_id
-      WHERE fc.id = ?
-      LIMIT 1
-      `,
-      [id]
-    );
+    const factura = await prisma.factura_compras.findUnique({
+      where: { id: facturaId },
+      include: {
+        proveedores: { select: { nombre: true, cuit: true } },
+        factura_compra_detalle: {
+          include: {
+            articulos_compras: { select: { codigo: true, descripcion: true } },
+          },
+          orderBy: { id: "asc" }
+        },
+        aplicaciones_pagos_compras: {
+          include: { pagos_compras: true }, // ✅ nombre correcto de la relación
+          orderBy: [{ pago_id: "asc" }]
+        },
+        factura_compra_impuestos: true,
+        factura_compra_ajustes_pie: true
+      }
+    });
 
     if (!factura) {
-      return NextResponse.json(
-        { error: "Factura no encontrada" },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: "Factura no encontrada" }, { status: 404 });
     }
 
-    /* ===== Detalle ===== */
-    const [detalle] = await conn.query(
-      `
-      SELECT fcd.*,
-             a.codigo AS articulo_codigo
-      FROM factura_compra_detalle fcd
-      LEFT JOIN articulos_compras a ON a.id = fcd.articulo_id
-      WHERE fcd.factura_id = ?
-      ORDER BY fcd.id ASC
-      `,
-      [id]
-    );
-
-    /* ===== Pagos aplicados ===== */
-    const [pagos] = await conn.query(
-      `
-      SELECT pc.*, ap.monto_aplicado
-      FROM aplicaciones_pagos_compras ap
-      INNER JOIN pagos_compras pc ON pc.id = ap.pago_id
-      WHERE ap.factura_id = ?
-      ORDER BY pc.fecha ASC, pc.id ASC
-      `,
-      [id]
-    );
-
-    factura.detalle = detalle;
-    factura.pagos = pagos;
-
-    return NextResponse.json(factura);
+    return NextResponse.json({
+      ...factura,
+      proveedor_nombre: factura.proveedores?.nombre || null,
+      proveedor_cuit: factura.proveedores?.cuit || null,
+      detalle: factura.factura_compra_detalle.map(d => ({
+        ...d,
+        articulo_codigo: d.articulos_compras?.codigo || null
+      })),
+      pagos: factura.aplicaciones_pagos_compras.map(p => ({
+        ...p.pagos_compras, // ✅ accedemos a la relación correcta
+        monto_aplicado: p.monto_aplicado
+      }))
+    });
 
   } catch (error) {
     console.error("GET factura compra error:", error);
-    return NextResponse.json(
-      { error: "Error al obtener factura" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Error al obtener factura" }, { status: 500 });
   }
 }
 
 /* =========================
    EDITAR CABECERA
 ========================= */
-export async function PUT(req, { params }) {
+export async function PUT(req, context) {
   try {
     const session = await getServerSession(authOptions);
-    if (!session) {
+    if (!session)
       return NextResponse.json({ error: "No autorizado" }, { status: 401 });
-    }
 
-    const { id } = await params;
-    const {
-      fecha,
-      numero,
-      letra,
-      punto_vta,
-      observacion
-    } = await req.json();
+    const params = await context.params;
+    const facturaId = Number(params.id);
 
-    const conn = await getConnection();
+    const { fecha, numero, letra, punto_vta, observacion } = await req.json();
 
-    const [res] = await conn.execute(
-      `
-      UPDATE factura_compras
-      SET fecha = ?,
-          numero = ?,
-          letra = ?,
-          punto_vta = ?,
-          observacion = ?
-      WHERE id = ?
-      `,
-      [
-        fecha ?? null,
-        numero ?? null,
-        letra ?? null,
-        punto_vta ?? null,
-        observacion ?? null,
-        id
-      ]
-    );
-
-    if (res.affectedRows === 0) {
-      return NextResponse.json(
-        { error: "Factura no encontrada" },
-        { status: 404 }
-      );
-    }
-
-    return NextResponse.json({
-      message: "Factura actualizada correctamente"
+    await prisma.factura_compras.update({
+      where: { id: facturaId },
+      data: {
+        fecha: fecha ? new Date(fecha) : undefined,
+        numero: numero ?? undefined,
+        letra: letra ?? undefined,
+        punto_vta: punto_vta ?? undefined,
+        observacion: observacion ?? undefined
+      }
     });
 
+    return NextResponse.json({ message: "Factura actualizada correctamente" });
+
   } catch (error) {
+    if (error.code === "P2025") {
+      return NextResponse.json({ error: "Factura no encontrada" }, { status: 404 });
+    }
+
     console.error("PUT factura compra error:", error);
-    return NextResponse.json(
-      { error: "Error al actualizar factura" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Error al actualizar factura" }, { status: 500 });
   }
 }
 
 /* =========================
-   ELIMINAR FACTURA (OPCIONAL)
+   ELIMINAR FACTURA
 ========================= */
-export async function DELETE(req, { params }) {
-  const conn = await getConnection();
-
+export async function DELETE(req, context) {
   try {
     const session = await getServerSession(authOptions);
-    if (!session) {
+    if (!session)
       return NextResponse.json({ error: "No autorizado" }, { status: 401 });
-    }
 
-    const { id } = await params;
+    const params = await context.params;
+    const facturaId = Number(params.id);
 
-    await conn.beginTransaction();
-
-    await conn.execute(
-      `DELETE FROM aplicaciones_pagos_compras WHERE factura_id = ?`,
-      [id]
-    );
-
-    await conn.execute(
-      `DELETE FROM pagos_compras WHERE factura_id = ?`,
-      [id]
-    );
-
-    await conn.execute(
-      `DELETE FROM factura_compra_detalle WHERE factura_id = ?`,
-      [id]
-    );
-
-    await conn.execute(
-      `DELETE FROM factura_compras WHERE id = ?`,
-      [id]
-    );
-
-    await conn.commit();
+    await prisma.$transaction(async (tx) => {
+      await tx.aplicaciones_pagos_compras.deleteMany({ where: { factura_id: facturaId } });
+      await tx.pagos_compras.deleteMany({ where: { factura_id: facturaId } });
+      await tx.factura_compra_detalle.deleteMany({ where: { factura_id: facturaId } });
+      await tx.factura_compras.delete({ where: { id: facturaId } });
+    });
 
     return NextResponse.json({ message: "Factura eliminada correctamente" });
 
   } catch (error) {
-    await conn.rollback();
     console.error("DELETE factura compra error:", error);
-    return NextResponse.json(
-      { error: "Error al eliminar factura" },
-      { status: 500 }
-    );
-  } finally {
-    conn.release();
+    return NextResponse.json({ error: "Error al eliminar factura" }, { status: 500 });
   }
 }

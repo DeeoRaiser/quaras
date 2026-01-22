@@ -1,7 +1,7 @@
 import CredentialsProvider from "next-auth/providers/credentials";
 import NextAuth from "next-auth";
 import { compare } from "bcrypt";
-import { getConnection } from "@/lib/db";
+import { prisma } from "@/lib/prisma";
 
 export const authOptions = {
   providers: [
@@ -11,38 +11,47 @@ export const authOptions = {
         usuario: { label: "Usuario", type: "text" },
         password: { label: "Contraseña", type: "password" },
       },
+
       async authorize(credentials) {
-        const conn = await getConnection();
-        const [rows] = await conn.execute(
-          "SELECT * FROM usuarios WHERE usuario = ? LIMIT 1",
-          [credentials.usuario]
+        if (!credentials?.usuario || !credentials?.password) {
+          return null;
+        }
+
+const user = await prisma.usuarios.findFirst({
+  where: {
+    usuario: credentials.usuario
+  }
+});
+
+
+        if (!user) return null;
+
+        const isValid = await compare(
+          credentials.password,
+          user.password
         );
-
-        if (!rows.length) return null;
-
-        const user = rows[0];
-        const isValid = await compare(credentials.password, user.password);
 
         if (!isValid) return null;
 
-        // 🔹 DEVOLVER EL USER PLANO
+        // 🔴 DEVOLVER OBJETO PLANO (CRÍTICO EN NEXTAUTH)
         return {
           id: user.id,
           usuario: user.usuario,
           access: user.access,
           role: user.admin,
-          nombre: user.nombre,
-          // podés agregar todos los campos que quieras
+          nombre: user.nombre
         };
       },
     }),
   ],
 
-  session: { strategy: "jwt" },
+  session: {
+    strategy: "jwt"
+  },
 
   callbacks: {
     async jwt({ token, user }) {
-      // user existe solo al hacer login
+      // user SOLO existe en el login
       if (user) {
         token.id = user.id;
         token.usuario = user.usuario;
@@ -64,7 +73,9 @@ export const authOptions = {
     },
   },
 
-  pages: { signIn: "/login" },
+  pages: {
+    signIn: "/login"
+  },
 };
 
 const handler = NextAuth(authOptions);

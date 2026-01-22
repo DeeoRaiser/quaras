@@ -1,21 +1,19 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "../../../../auth/[...nextauth]/route";
-import { getConnection } from "@/lib/db";
+import { prisma } from "@/lib/prisma";
 
 /* =========================
    AGREGAR DETALLE
 ========================= */
 export async function POST(req, { params }) {
-  const conn = await getConnection();
-
   try {
     const session = await getServerSession(authOptions);
     if (!session) {
       return NextResponse.json({ error: "No autorizado" }, { status: 401 });
     }
 
-    const { id: facturaId } = await params;
+    const facturaId = Number(params.id);
 
     const {
       articulo_id = null,
@@ -31,55 +29,53 @@ export async function POST(req, { params }) {
       Number(ajuste) +
       Number(iva);
 
-    await conn.beginTransaction();
+    const result = await prisma.$transaction(async (tx) => {
 
-    await conn.execute(
-      `INSERT INTO factura_compra_detalle
-        (factura_id, articulo_id, descripcion, cantidad, precio_compra, iva, ajuste, subtotal)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-      [
-        facturaId,
-        articulo_id,
-        descripcion,
-        cantidad,
-        precio_compra,
-        iva,
-        ajuste,
-        subtotal
-      ]
-    );
+      // 1️⃣ Crear detalle
+      await tx.factura_compra_detalle.create({
+        data: {
+          factura_id: facturaId,
+          articulo_id: articulo_id ? Number(articulo_id) : null,
+          descripcion,
+          cantidad: Number(cantidad),
+          precio_compra: Number(precio_compra),
+          iva: Number(iva),
+          ajuste: Number(ajuste),
+          subtotal: Number(subtotal)
+        }
+      });
 
-    // recalcular total factura
-    const [[{ total }]] = await conn.query(
-      `SELECT COALESCE(SUM(subtotal),0) AS total
-       FROM factura_compra_detalle
-       WHERE factura_id = ?`,
-      [facturaId]
-    );
+      // 2️⃣ Recalcular total
+      const totalDetalle = await tx.factura_compra_detalle.aggregate({
+        where: { factura_id: facturaId },
+        _sum: { subtotal: true }
+      });
 
-    await conn.execute(
-      `UPDATE factura_compras
-       SET total = ?, saldo = ?
-       WHERE id = ?`,
-      [total, total, facturaId]
-    );
+      const total = totalDetalle._sum.subtotal || 0;
 
-    await conn.commit();
+      // 3️⃣ Actualizar factura
+      await tx.factura_compras.update({
+        where: { id: facturaId },
+        data: {
+          total,
+          saldo: total
+        }
+      });
+
+      return total;
+    });
 
     return NextResponse.json({
       message: "Detalle agregado correctamente",
-      total
+      total: result
     });
 
   } catch (error) {
-    await conn.rollback();
     console.error("POST detalle compra error:", error);
     return NextResponse.json(
       { error: "Error al agregar detalle" },
       { status: 500 }
     );
-  } finally {
-    conn.release();
   }
 }
 
@@ -87,15 +83,13 @@ export async function POST(req, { params }) {
    ELIMINAR DETALLE
 ========================= */
 export async function DELETE(req, { params }) {
-  const conn = await getConnection();
-
   try {
     const session = await getServerSession(authOptions);
     if (!session) {
       return NextResponse.json({ error: "No autorizado" }, { status: 401 });
     }
 
-    const { id: facturaId } = await params;
+    const facturaId = Number(params.id);
     const { detalle_id } = await req.json();
 
     if (!detalle_id) {
@@ -105,43 +99,45 @@ export async function DELETE(req, { params }) {
       );
     }
 
-    await conn.beginTransaction();
+    const result = await prisma.$transaction(async (tx) => {
 
-    await conn.execute(
-      `DELETE FROM factura_compra_detalle
-       WHERE id = ? AND factura_id = ?`,
-      [detalle_id, facturaId]
-    );
+      // 1️⃣ Eliminar detalle
+      await tx.factura_compra_detalle.delete({
+        where: {
+          id: Number(detalle_id)
+        }
+      });
 
-    const [[{ total }]] = await conn.query(
-      `SELECT COALESCE(SUM(subtotal),0) AS total
-       FROM factura_compra_detalle
-       WHERE factura_id = ?`,
-      [facturaId]
-    );
+      // 2️⃣ Recalcular total
+      const totalDetalle = await tx.factura_compra_detalle.aggregate({
+        where: { factura_id: facturaId },
+        _sum: { subtotal: true }
+      });
 
-    await conn.execute(
-      `UPDATE factura_compras
-       SET total = ?, saldo = ?
-       WHERE id = ?`,
-      [total, total, facturaId]
-    );
+      const total = totalDetalle._sum.subtotal || 0;
 
-    await conn.commit();
+      // 3️⃣ Actualizar factura
+      await tx.factura_compras.update({
+        where: { id: facturaId },
+        data: {
+          total,
+          saldo: total
+        }
+      });
+
+      return total;
+    });
 
     return NextResponse.json({
       message: "Detalle eliminado correctamente",
-      total
+      total: result
     });
 
   } catch (error) {
-    await conn.rollback();
     console.error("DELETE detalle compra error:", error);
     return NextResponse.json(
       { error: "Error al eliminar detalle" },
       { status: 500 }
     );
-  } finally {
-    conn.release();
   }
 }

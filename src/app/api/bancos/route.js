@@ -1,9 +1,11 @@
 import { getServerSession } from "next-auth";
 import { authOptions } from "../auth/[...nextauth]/route.js";
 import { NextResponse } from "next/server";
-import { getConnection } from "@/lib/db";
+import { prisma } from "@/lib/prisma";
 
-// Crear banco
+// ==========================
+// POST → CREAR BANCO
+// ==========================
 export async function POST(req) {
   try {
     const session = await getServerSession(authOptions);
@@ -20,25 +22,34 @@ export async function POST(req) {
       );
     }
 
-    const conn = await getConnection();
-    const sql = `
-      INSERT INTO bancos (nombre, sucursal, nro_cuenta, cbu, nota)
-      VALUES (?, ?, ?, ?, ?)
-    `;
-
-    await conn.execute(sql, [nombre, sucursal, nro_cuenta, cbu, nota]);
+    await prisma.bancos.create({
+      data: {
+        nombre,
+        sucursal,
+        nro_cuenta,
+        cbu,
+        nota
+      }
+    });
 
     return NextResponse.json(
       { message: "Banco creado correctamente" },
       { status: 201 }
     );
+
   } catch (error) {
-    console.error("Error POST /bancos:", error);
-    return NextResponse.json({ error: "Error al crear banco" }, { status: 500 });
+    console.error("POST /bancos error:", error);
+
+    return NextResponse.json(
+      { error: "Error al crear banco" },
+      { status: 500 }
+    );
   }
 }
 
-// Obtener todos los bancos
+// ==========================
+// GET → LISTAR BANCOS
+// ==========================
 export async function GET() {
   try {
     const session = await getServerSession(authOptions);
@@ -46,14 +57,17 @@ export async function GET() {
       return NextResponse.json({ error: "No autorizado" }, { status: 401 });
     }
 
-    const conn = await getConnection();
-    const [rows] = await conn.query(
-      "SELECT * FROM bancos ORDER BY id DESC"
-    );
+    const bancos = await prisma.bancos.findMany({
+      orderBy: {
+        id: "desc"
+      }
+    });
 
-    return NextResponse.json(rows, { status: 200 });
+    return NextResponse.json(bancos, { status: 200 });
+
   } catch (error) {
-    console.error("Error GET /bancos:", error);
+    console.error("GET /bancos error:", error);
+
     return NextResponse.json(
       { error: "Error al obtener los bancos" },
       { status: 500 }

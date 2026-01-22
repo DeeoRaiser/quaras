@@ -1,31 +1,32 @@
 import { getServerSession } from "next-auth";
 import { authOptions } from "../../auth/[...nextauth]/route";
 import { NextResponse } from "next/server";
-import { getConnection } from "@/lib/db";
+import {prisma} from "@/lib/prisma";
 
-// Obtener una clasificación
+
+// -----------------------------------------------------
+// GET: Obtener una clasificación
+// -----------------------------------------------------
 export async function GET(req, { params }) {
   try {
     const session = await getServerSession(authOptions);
     if (!session)
       return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
-    const { id } = params;
+    const id = Number(params.id);
 
-    const conn = await getConnection();
-    const [rows] = await conn.query(
-      "SELECT * FROM clasificaciones WHERE id = ?",
-      [id]
-    );
+    const clasificacion = await prisma.clasificaciones.findUnique({
+      where: { id }
+    });
 
-    if (rows.length === 0) {
+    if (!clasificacion) {
       return NextResponse.json(
         { error: "Clasificación no encontrada" },
         { status: 404 }
       );
     }
 
-    return NextResponse.json(rows[0], { status: 200 });
+    return NextResponse.json(clasificacion, { status: 200 });
   } catch (error) {
     console.error("Error GET /clasificaciones/[id]:", error);
     return NextResponse.json(
@@ -35,14 +36,17 @@ export async function GET(req, { params }) {
   }
 }
 
-// Editar clasificación
+
+// -----------------------------------------------------
+// PUT: Editar clasificación
+// -----------------------------------------------------
 export async function PUT(req, { params }) {
   try {
     const session = await getServerSession(authOptions);
     if (!session)
       return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
-    const { id } = params;
+    const id = Number(params.id);
     const { descripcion } = await req.json();
 
     if (!descripcion) {
@@ -52,11 +56,10 @@ export async function PUT(req, { params }) {
       );
     }
 
-    const conn = await getConnection();
-    await conn.execute(
-      "UPDATE clasificaciones SET descripcion = ? WHERE id = ?",
-      [descripcion, id]
-    );
+    await prisma.clasificaciones.update({
+      where: { id },
+      data: { descripcion }
+    });
 
     return NextResponse.json(
       { message: "Clasificación actualizada correctamente" },
@@ -64,6 +67,15 @@ export async function PUT(req, { params }) {
     );
   } catch (error) {
     console.error("Error PUT /clasificaciones/[id]:", error);
+
+    // Manejo de ID inexistente
+    if (error.code === "P2025") {
+      return NextResponse.json(
+        { error: "Clasificación no encontrada" },
+        { status: 404 }
+      );
+    }
+
     return NextResponse.json(
       { error: "Error al actualizar clasificación" },
       { status: 500 }
@@ -71,17 +83,21 @@ export async function PUT(req, { params }) {
   }
 }
 
-// Eliminar clasificación
+
+// -----------------------------------------------------
+// DELETE: Eliminar clasificación
+// -----------------------------------------------------
 export async function DELETE(req, { params }) {
   try {
     const session = await getServerSession(authOptions);
     if (!session)
       return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
-    const { id } = params;
+    const id = Number(params.id);
 
-    const conn = await getConnection();
-    await conn.execute("DELETE FROM clasificaciones WHERE id = ?", [id]);
+    await prisma.clasificaciones.delete({
+      where: { id }
+    });
 
     return NextResponse.json(
       { message: "Clasificación eliminada correctamente" },
@@ -89,6 +105,14 @@ export async function DELETE(req, { params }) {
     );
   } catch (error) {
     console.error("Error DELETE /clasificaciones/[id]:", error);
+
+    if (error.code === "P2025") {
+      return NextResponse.json(
+        { error: "Clasificación no encontrada" },
+        { status: 404 }
+      );
+    }
+
     return NextResponse.json(
       { error: "Error al eliminar clasificación" },
       { status: 500 }

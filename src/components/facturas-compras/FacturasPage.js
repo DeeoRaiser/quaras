@@ -56,6 +56,8 @@ export default function FacturasPage({ title }) {
 
       const json = await res.json();
       setData(json);
+      console.log("data")
+      console.log(data)
     } catch (err) {
       console.error(err);
     } finally {

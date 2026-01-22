@@ -1,89 +1,127 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "../auth/[...nextauth]/route.js";
-import { getConnection } from "@/lib/db";
+import { prisma } from "@/lib/prisma";
 
-// ➤ Obtener una categoría
+// ==========================
+// GET → OBTENER CATEGORÍA
+// ==========================
 export async function GET(req, { params }) {
   try {
     const session = await getServerSession(authOptions);
-    if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+    if (!session) {
+      return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+    }
 
-    const { id } = params;
+    const id = Number(params.id);
 
-    const conn = await getConnection();
-    const [rows] = await conn.query(
-      "SELECT * FROM categorias WHERE id = ? LIMIT 1",
-      [id]
-    );
+    const categoria = await prisma.categorias.findUnique({
+      where: { id }
+    });
 
-    if (rows.length === 0)
-      return NextResponse.json({ error: "Categoría no encontrada" }, { status: 404 });
+    if (!categoria) {
+      return NextResponse.json(
+        { error: "Categoría no encontrada" },
+        { status: 404 }
+      );
+    }
 
-    return NextResponse.json(rows[0]);
+    return NextResponse.json(categoria);
+
   } catch (error) {
     console.error("GET categoria error:", error);
-    return NextResponse.json({ error: "Error al obtener categoría" }, { status: 500 });
+
+    return NextResponse.json(
+      { error: "Error al obtener categoría" },
+      { status: 500 }
+    );
   }
 }
 
-// ➤ Actualizar categoría
+// ==========================
+// PUT → ACTUALIZAR CATEGORÍA
+// ==========================
 export async function PUT(req, { params }) {
   try {
     const session = await getServerSession(authOptions);
-    if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+    if (!session) {
+      return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+    }
 
-    const { id } = params;
+    const id = Number(params.id);
     const data = await req.json();
-    const { nombre, tipo, descripcion, activo } = data;
 
-    const conn = await getConnection();
-    const [result] = await conn.execute(
-      `UPDATE categorias SET 
-        nombre = ?, 
-        tipo = ?, 
-        descripcion = ?, 
-        activo = ?
-       WHERE id = ?`,
-      [
+    const {
+      nombre,
+      tipo = "gasto",
+      descripcion = null,
+      activo = true
+    } = data;
+
+    await prisma.categorias.update({
+      where: { id },
+      data: {
         nombre,
-        tipo || "gasto",
-        descripcion || null,
-        activo ?? 1,
-        id
-      ]
-    );
+        tipo,
+        descripcion,
+        activo
+      }
+    });
 
-    if (result.affectedRows === 0)
-      return NextResponse.json({ error: "Categoría no encontrada" }, { status: 404 });
+    return NextResponse.json({
+      message: "Categoría actualizada correctamente"
+    });
 
-    return NextResponse.json({ message: "Categoría actualizada correctamente" });
   } catch (error) {
+    if (error.code === "P2025") {
+      return NextResponse.json(
+        { error: "Categoría no encontrada" },
+        { status: 404 }
+      );
+    }
+
     console.error("PUT categoria error:", error);
-    return NextResponse.json({ error: "Error al actualizar categoría" }, { status: 500 });
+
+    return NextResponse.json(
+      { error: "Error al actualizar categoría" },
+      { status: 500 }
+    );
   }
 }
 
-// ➤ Eliminar categoría
+// ==========================
+// DELETE → ELIMINAR CATEGORÍA
+// ==========================
 export async function DELETE(req, { params }) {
   try {
     const session = await getServerSession(authOptions);
-    if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+    if (!session) {
+      return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+    }
 
-    const { id } = params;
+    const id = Number(params.id);
 
-    const conn = await getConnection();
-    const [result] = await conn.execute(
-      "DELETE FROM categorias WHERE id = ?",
-      [id]
-    );
+    await prisma.categorias.delete({
+      where: { id }
+    });
 
-    if (result.affectedRows === 0)
-      return NextResponse.json({ error: "Categoría no encontrada" }, { status: 404 });
+    return NextResponse.json({
+      message: "Categoría eliminada correctamente"
+    });
 
-    return NextResponse.json({ message: "Categoría eliminada correctamente" });
   } catch (error) {
+    if (error.code === "P2025") {
+      return NextResponse.json(
+        { error: "Categoría no encontrada" },
+        { status: 404 }
+      );
+    }
+
     console.error("DELETE categoria error:", error);
-    return NextResponse.json({ error: "Error al eliminar categoría" }, { status: 500 });
+
+    return NextResponse.json(
+      { error: "Error al eliminar categoría" },
+      { status: 500 }
+    );
   }
 }
